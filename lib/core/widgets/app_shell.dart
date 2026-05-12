@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:medication_reminder/features/medications/presentation/medications_page.dart';
 import 'package:medication_reminder/features/today/presentation/today_page.dart';
 
 class AppShell extends StatefulWidget {
@@ -15,13 +16,13 @@ class _AppShellState extends State<AppShell> {
   static const _pages = <Widget>[
     TodayPage(),
     _PlaceholderPage(key: ValueKey('calendar-page'), title: '日历'),
-    _PlaceholderPage(key: ValueKey('medications-page'), title: '药品'),
+    MedicationsPage(),
   ];
 
   @override
   Widget build(BuildContext context) {
     final shell = Scaffold(
-      appBar: AppBar(title: const Text('药丸')),
+      appBar: _index == 2 ? null : AppBar(title: const Text('药丸')),
       body: _pages[_index],
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
