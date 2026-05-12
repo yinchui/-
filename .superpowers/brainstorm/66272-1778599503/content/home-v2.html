@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>药丸 - 今日用药</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-warm: #FDF6EE;
+  --bg-card: #FFFFFF;
+  --accent-green: #6BBF7A;
+  --accent-green-soft: #E8F7EB;
+  --accent-orange: #F2994A;
+  --accent-orange-soft: #FFF0E0;
+  --accent-coral: #FF8A80;
+  --text-primary: #3D2E1F;
+  --text-secondary: #8B7355;
+  --text-muted: #BBA88A;
+  --border-soft: #F0E6D8;
+  --shadow-card: 0 4px 20px rgba(139, 115, 85, 0.08);
+  --shadow-float: 0 8px 32px rgba(139, 115, 85, 0.12);
+  --radius-lg: 20px;
+  --radius-md: 14px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Noto Sans SC', 'Quicksand', sans-serif;
+  background: var(--bg-warm);
+  color: var(--text-primary);
+  min-height: 100vh;
+  max-width: 390px;
+  margin: 0 auto;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* 背景装饰 */
+body::before {
+  content: '';
+  position: fixed;
+  top: -80px;
+  right: -60px;
+  width: 240px;
+  height: 240px;
+  background: radial-gradient(circle, rgba(242, 153, 74, 0.08) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  bottom: 100px;
+  left: -40px;
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(circle, rgba(107, 191, 122, 0.06) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* 顶部区域 */
+.header {
+  padding: 56px 24px 24px;
+  animation: fadeDown 0.6s ease-out;
+}
+
+@keyframes fadeDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.greeting {
+  font-family: 'Quicksand', sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
+}
+
+.date-info {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-top: 6px;
+  font-weight: 400;
+}
+
+.summary-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 8px 16px;
+  background: white;
+  border-radius: 24px;
+  box-shadow: var(--shadow-card);
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.summary-pill .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-orange);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.3); }
+}
+
+/* 时间段 */
+.time-section {
+  padding: 0 20px;
+  margin-bottom: 24px;
+  animation: fadeUp 0.5s ease-out both;
+}
+
+.time-section:nth-child(2) { animation-delay: 0.1s; }
+.time-section:nth-child(3) { animation-delay: 0.2s; }
+.time-section:nth-child(4) { animation-delay: 0.3s; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.time-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+  padding-left: 4px;
+}
+
+.time-label .icon {
+  font-size: 16px;
+}
+
+/* 药品卡片 */
+.med-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  margin-bottom: 10px;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.med-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-float);
+}
+
+.med-card.confirmed {
+  background: var(--accent-green-soft);
+  box-shadow: none;
+}
+
+.med-card.confirmed::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--accent-green);
+  border-radius: 0 4px 4px 0;
+}
+
+.med-card.pending {
+  border: 1.5px solid var(--border-soft);
+}
+
+.med-card.pending::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--accent-orange);
+  border-radius: 0 4px 4px 0;
+}
+
+.med-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.med-card.confirmed .med-icon {
+  background: rgba(107, 191, 122, 0.15);
+}
+
+.med-card.pending .med-icon {
+  background: rgba(242, 153, 74, 0.12);
+}
+
+.med-info {
+  flex: 1;
+}
+
+.med-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 3px;
+}
+
+.med-card.confirmed .med-name {
+  color: #2E7D32;
+}
+
+.med-dosage {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.med-card.confirmed .med-dosage {
+  color: #66BB6A;
+}
+
+.med-status {
+  font-size: 12px;
+  font-weight: 500;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.med-card.confirmed .med-status {
+  color: var(--accent-green);
+}
+
+.med-card.pending .med-status {
+  color: var(--accent-orange);
+}
+
+/* 底部导航 */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 390px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(240, 230, 216, 0.6);
+  padding: 10px 0 28px;
+  display: flex;
+  justify-content: space-around;
+  z-index: 100;
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.nav-item:hover { transform: scale(1.05); }
+
+.nav-item.active .nav-icon { color: var(--accent-orange); }
+.nav-item.active .nav-label { color: var(--accent-orange); font-weight: 600; }
+
+.nav-icon { font-size: 22px; color: var(--text-muted); }
+.nav-label { font-size: 11px; color: var(--text-muted); }
+
+/* 底部留白 */
+.spacer { height: 100px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="greeting">早上好 ☀️</div>
+  <div class="date-info">5月12日 · 星期一</div>
+  <div class="summary-pill">
+    <span class="dot"></span>
+    <span>今日 3 种药 · 已服 2 种</span>
+  </div>
+</div>
+
+<div class="time-section">
+  <div class="time-label"><span class="icon">🌅</span> 早上 8:00</div>
+  <div class="med-card confirmed">
+    <div class="med-icon">💊</div>
+    <div class="med-info">
+      <div class="med-name">维生素 D</div>
+      <div class="med-dosage">1片</div>
+    </div>
+    <div class="med-status">8:03 已服 ✓</div>
+  </div>
+  <div class="med-card confirmed">
+    <div class="med-icon">💊</div>
+    <div class="med-info">
+      <div class="med-name">阿莫西林</div>
+      <div class="med-dosage">2粒</div>
+    </div>
+    <div class="med-status">8:05 已服 ✓</div>
+  </div>
+</div>
+
+<div class="time-section">
+  <div class="time-label"><span class="icon">☀️</span> 中午 12:00</div>
+  <div class="med-card pending">
+    <div class="med-icon">💊</div>
+    <div class="med-info">
+      <div class="med-name">阿莫西林</div>
+      <div class="med-dosage">2粒</div>
+    </div>
+    <div class="med-status">还有 2 小时</div>
+  </div>
+</div>
+
+<div class="time-section">
+  <div class="time-label"><span class="icon">🌙</span> 晚上 20:00</div>
+  <div class="med-card pending">
+    <div class="med-icon">💊</div>
+    <div class="med-info">
+      <div class="med-name">褪黑素</div>
+      <div class="med-dosage">1片</div>
+    </div>
+    <div class="med-status">还有 10 小时</div>
+  </div>
+</div>
+
+<div class="spacer"></div>
+
+<nav class="bottom-nav">
+  <div class="nav-item active">
+    <span class="nav-icon">🏠</span>
+    <span class="nav-label">今日</span>
+  </div>
+  <div class="nav-item">
+    <span class="nav-icon">📅</span>
+    <span class="nav-label">日历</span>
+  </div>
+  <div class="nav-item">
+    <span class="nav-icon">💊</span>
+    <span class="nav-label">药品</span>
+  </div>
+</nav>
+
+</body>
+</html>
