@@ -47,15 +47,51 @@ void main() {
     expect(find.text('已完成 1 / 2'), findsOneWidget);
     expect(find.text('已服用'), findsOneWidget);
   });
+
+  testWidgets('shows missed log as missed after refreshing today doses', (
+    tester,
+  ) async {
+    final repository = InMemoryMedicationRepository();
+    addTearDown(repository.close);
+
+    await repository.saveMedication(_medication(schedule: const ['08:00']));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          medicationRepositoryProvider.overrideWithValue(repository),
+          todayProvider.overrideWithValue(DateTime(2026, 5, 13)),
+          nowProvider.overrideWithValue(DateTime(2026, 5, 13, 9, 15)),
+        ],
+        child: MaterialApp(theme: AppTheme.light(), home: const TodayPage()),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('待服用'), findsOneWidget);
+
+    await repository.saveLog(_missedLog());
+    final container = ProviderScope.containerOf(
+      tester.element(find.byKey(const ValueKey('today-page'))),
+      listen: false,
+    );
+    await container.refresh(todayDosesProvider.future);
+    await tester.pumpAndSettle();
+
+    expect(find.text('已完成 0 / 1'), findsOneWidget);
+    expect(find.text('漏服'), findsOneWidget);
+    expect(find.text('待服用'), findsNothing);
+  });
 }
 
-Medication _medication() {
+Medication _medication({List<String> schedule = const ['08:00', '20:00']}) {
   return Medication(
     id: 'medication-1',
     userId: 'user-1',
     name: '维生素D',
     dosage: '1片',
-    schedule: const ['08:00', '20:00'],
+    schedule: schedule,
     createdAt: DateTime.utc(2026, 5, 13, 7, 30),
     updatedAt: DateTime.utc(2026, 5, 13, 7, 30),
   );
@@ -68,6 +104,17 @@ MedicationLog _confirmedLog() {
     scheduledTime: DateTime(2026, 5, 13, 8),
     confirmedTime: DateTime(2026, 5, 13, 8, 5),
     status: MedicationLogStatus.confirmed,
+    date: DateTime(2026, 5, 13),
+  );
+}
+
+MedicationLog _missedLog() {
+  return MedicationLog(
+    id: 'log-missed-1',
+    medicationId: 'medication-1',
+    scheduledTime: DateTime(2026, 5, 13, 8),
+    confirmedTime: null,
+    status: MedicationLogStatus.missed,
     date: DateTime(2026, 5, 13),
   );
 }

@@ -9,14 +9,11 @@ class MedicationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isConfirmed = dose.status == DoseStatus.confirmed;
-    final accentColor = isConfirmed ? AppColors.green : AppColors.orange;
-    final backgroundColor = isConfirmed ? AppColors.greenSoft : AppColors.card;
-    final statusText = isConfirmed ? '已服用' : '待服用';
+    final statusStyle = _statusStyleFor(dose.status);
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: backgroundColor,
+        color: statusStyle.backgroundColor,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.borderSoft),
       ),
@@ -26,7 +23,10 @@ class MedicationCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              ColoredBox(color: accentColor, child: const SizedBox(width: 5)),
+              ColoredBox(
+                color: statusStyle.accentColor,
+                child: const SizedBox(width: 5),
+              ),
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.all(14),
@@ -36,14 +36,14 @@ class MedicationCard extends StatelessWidget {
                         width: 40,
                         height: 40,
                         decoration: BoxDecoration(
-                          color: accentColor.withValues(alpha: 0.14),
+                          color: statusStyle.accentColor.withValues(
+                            alpha: 0.14,
+                          ),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
-                          isConfirmed
-                              ? Icons.task_alt
-                              : Icons.medication_liquid,
-                          color: accentColor,
+                          statusStyle.icon,
+                          color: statusStyle.accentColor,
                           size: 22,
                         ),
                       ),
@@ -80,9 +80,9 @@ class MedicationCard extends StatelessWidget {
                                   ),
                                 ),
                                 Text(
-                                  statusText,
+                                  statusStyle.text,
                                   style: TextStyle(
-                                    color: accentColor,
+                                    color: statusStyle.accentColor,
                                     fontSize: 13,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -117,6 +117,43 @@ class MedicationCard extends StatelessWidget {
       ),
     );
   }
+}
+
+_MedicationCardStatusStyle _statusStyleFor(DoseStatus status) {
+  return switch (status) {
+    DoseStatus.confirmed => const _MedicationCardStatusStyle(
+      accentColor: AppColors.green,
+      backgroundColor: AppColors.greenSoft,
+      text: '已服用',
+      icon: Icons.task_alt,
+    ),
+    DoseStatus.missed => const _MedicationCardStatusStyle(
+      accentColor: AppColors.red,
+      backgroundColor: AppColors.redSoft,
+      text: '漏服',
+      icon: Icons.error_outline,
+    ),
+    DoseStatus.pending => const _MedicationCardStatusStyle(
+      accentColor: AppColors.orange,
+      backgroundColor: AppColors.card,
+      text: '待服用',
+      icon: Icons.medication_liquid,
+    ),
+  };
+}
+
+class _MedicationCardStatusStyle {
+  const _MedicationCardStatusStyle({
+    required this.accentColor,
+    required this.backgroundColor,
+    required this.text,
+    required this.icon,
+  });
+
+  final Color accentColor;
+  final Color backgroundColor;
+  final String text;
+  final IconData icon;
 }
 
 String _formatTime(DateTime value) {
