@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:medication_reminder/features/today/presentation/today_page.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
@@ -11,14 +13,14 @@ class _AppShellState extends State<AppShell> {
   int _index = 0;
 
   static const _pages = <Widget>[
-    _PlaceholderPage(key: ValueKey('today-page'), title: '今日'),
+    TodayPage(),
     _PlaceholderPage(key: ValueKey('calendar-page'), title: '日历'),
     _PlaceholderPage(key: ValueKey('medications-page'), title: '药品'),
   ];
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final shell = Scaffold(
       appBar: AppBar(title: const Text('药丸')),
       body: _pages[_index],
       bottomNavigationBar: NavigationBar(
@@ -33,6 +35,13 @@ class _AppShellState extends State<AppShell> {
         ],
       ),
     );
+
+    try {
+      ProviderScope.containerOf(context, listen: false);
+      return shell;
+    } catch (_) {
+      return ProviderScope(child: shell);
+    }
   }
 }
 
