@@ -7,9 +7,11 @@ class Medication {
     required this.name,
     required this.dosage,
     required List<String> schedule,
-    required this.createdAt,
-    required this.updatedAt,
-  }) : schedule = List.unmodifiable(schedule);
+    required DateTime createdAt,
+    required DateTime updatedAt,
+  }) : schedule = List.unmodifiable(schedule),
+       createdAt = createdAt.toUtc(),
+       updatedAt = updatedAt.toUtc();
 
   final String id;
   final String userId;

@@ -3,14 +3,16 @@ enum MedicationLogStatus { confirmed, missed }
 const _unset = Object();
 
 class MedicationLog {
-  const MedicationLog({
+  MedicationLog({
     required this.id,
     required this.medicationId,
-    required this.scheduledTime,
-    required this.confirmedTime,
+    required DateTime scheduledTime,
+    required DateTime? confirmedTime,
     required this.status,
-    required this.date,
-  });
+    required DateTime date,
+  }) : scheduledTime = scheduledTime.toUtc(),
+       confirmedTime = confirmedTime?.toUtc(),
+       date = DateTime(date.year, date.month, date.day);
 
   final String id;
   final String medicationId;

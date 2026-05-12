@@ -11,9 +11,10 @@ class SyncQueueItem {
     required this.recordId,
     required this.action,
     required Map<String, Object?> payload,
-    required this.createdAt,
+    required DateTime createdAt,
     required this.synced,
-  }) : payload = Map.unmodifiable(payload);
+  }) : payload = _deepFreezeMap(payload),
+       createdAt = createdAt.toUtc();
 
   final int? id;
   final String tableName;
@@ -142,4 +143,25 @@ int _deepHash(Object? value) {
   }
 
   return value.hashCode;
+}
+
+Map<String, Object?> _deepFreezeMap(Map source) {
+  final frozen = <String, Object?>{};
+  for (final entry in source.entries) {
+    frozen[entry.key as String] = _deepFreezeValue(entry.value);
+  }
+
+  return Map<String, Object?>.unmodifiable(frozen);
+}
+
+Object? _deepFreezeValue(Object? value) {
+  if (value is Map) {
+    return _deepFreezeMap(value);
+  }
+
+  if (value is List) {
+    return List<Object?>.unmodifiable(value.map(_deepFreezeValue));
+  }
+
+  return value;
 }

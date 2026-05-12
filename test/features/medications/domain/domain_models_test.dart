@@ -22,7 +22,38 @@ void main() {
 
       expect(map['schedule'], isA<String>());
       expect(jsonDecode(map['schedule']! as String), medication.schedule);
+      expect(medication.createdAt.isUtc, isTrue);
+      expect(medication.updatedAt.isUtc, isTrue);
+      expect(map['created_at'], endsWith('Z'));
+      expect(map['updated_at'], endsWith('Z'));
       expect(Medication.fromMap(map), medication);
+    });
+
+    test('copyWith updates selected fields and keeps timestamps as UTC', () {
+      final medication = Medication(
+        id: 'm1',
+        userId: 'u1',
+        name: '阿莫西林',
+        dosage: '2粒',
+        schedule: const ['08:00', '12:00', '20:00'],
+        createdAt: DateTime(2026, 5, 12, 7, 30),
+        updatedAt: DateTime(2026, 5, 12, 8),
+      );
+
+      final copy = medication.copyWith(
+        name: '维生素C',
+        schedule: const ['09:00'],
+        createdAt: DateTime(2026, 5, 12, 9, 15),
+        updatedAt: DateTime(2026, 5, 12, 10, 45),
+      );
+
+      expect(copy.name, '维生素C');
+      expect(copy.schedule, equals(const ['09:00']));
+      expect(copy.createdAt.isUtc, isTrue);
+      expect(copy.updatedAt.isUtc, isTrue);
+      expect(copy.toMap()['created_at'], endsWith('Z'));
+      expect(copy.toMap()['updated_at'], endsWith('Z'));
+      expect(medication.name, '阿莫西林');
     });
   });
 
@@ -41,6 +72,8 @@ void main() {
 
       expect(map['status'], 'confirmed');
       expect(map['date'], '2026-05-12');
+      expect(map['scheduled_time'], endsWith('Z'));
+      expect(map['confirmed_time'], endsWith('Z'));
       expect(log.isConfirmed, isTrue);
       expect(MedicationLog.fromMap(map), log);
     });
@@ -59,7 +92,29 @@ void main() {
 
       expect(map['status'], 'missed');
       expect(map['confirmed_time'], isNull);
+      expect(map['scheduled_time'], endsWith('Z'));
       expect(log.isConfirmed, isFalse);
+      expect(MedicationLog.fromMap(map), log);
+    });
+
+    test('normalizes date to date-only and preserves round trip', () {
+      final log = MedicationLog(
+        id: 'l3',
+        medicationId: 'm1',
+        scheduledTime: DateTime(2026, 5, 12, 9, 30),
+        confirmedTime: DateTime(2026, 5, 12, 9, 45),
+        status: MedicationLogStatus.confirmed,
+        date: DateTime(2026, 5, 12, 9, 30),
+      );
+
+      final map = log.toMap();
+
+      expect(log.date, DateTime(2026, 5, 12));
+      expect(log.scheduledTime.isUtc, isTrue);
+      expect(log.confirmedTime!.isUtc, isTrue);
+      expect(map['date'], '2026-05-12');
+      expect(map['scheduled_time'], endsWith('Z'));
+      expect(map['confirmed_time'], endsWith('Z'));
       expect(MedicationLog.fromMap(map), log);
     });
   });
@@ -86,6 +141,8 @@ void main() {
       expect(map['payload'], isA<String>());
       expect(jsonDecode(map['payload']! as String), item.payload);
       expect(map['synced'], 0);
+      expect(item.createdAt.isUtc, isTrue);
+      expect(map['created_at'], endsWith('Z'));
       expect(SyncQueueItem.fromMap(map), item);
     });
 
@@ -111,5 +168,61 @@ void main() {
       expect(deleteItem.toMap()['action'], 'delete');
       expect(SyncQueueItem.fromMap(deleteItem.toMap()), deleteItem);
     });
+
+    test(
+      'deep copies nested payload data so external mutation does not change it',
+      () {
+        final nestedList = <Object?>[
+          'alpha',
+          <String, Object?>{'count': 1},
+        ];
+        final nestedMap = <String, Object?>{
+          'items': nestedList,
+          'meta': <String, Object?>{'flag': true},
+        };
+        final payload = <String, Object?>{
+          'nested': nestedMap,
+          'items': nestedList,
+        };
+
+        final item = SyncQueueItem(
+          id: 1,
+          tableName: 'medications',
+          recordId: 'm1',
+          action: SyncAction.update,
+          payload: payload,
+          createdAt: DateTime(2026, 5, 12, 9, 30),
+          synced: false,
+        );
+
+        final hashBefore = item.hashCode;
+        final jsonBefore = item.toMap()['payload'] as String;
+
+        nestedList.add('beta');
+        (nestedMap['meta'] as Map<String, Object?>)['flag'] = false;
+        payload['extra'] = 'changed';
+
+        expect(
+          item.payload['items'],
+          equals([
+            'alpha',
+            <String, Object?>{'count': 1},
+          ]),
+        );
+        expect(
+          item.payload['nested'],
+          equals({
+            'items': [
+              'alpha',
+              <String, Object?>{'count': 1},
+            ],
+            'meta': <String, Object?>{'flag': true},
+          }),
+        );
+        expect(item.hashCode, hashBefore);
+        expect(item.toMap()['payload'], jsonBefore);
+        expect(jsonDecode(item.toMap()['payload']! as String), item.payload);
+      },
+    );
   });
 }
