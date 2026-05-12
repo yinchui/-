@@ -40,6 +40,12 @@ void main() {
     await tester.tap(find.byIcon(Icons.delete_outline));
     await tester.pumpAndSettle();
 
+    expect(find.text('确认删除药品？'), findsOneWidget);
+    expect(find.text('维生素 D'), findsWidgets);
+
+    await tester.tap(find.text('删除'));
+    await tester.pumpAndSettle();
+
     expect(find.text('维生素 D'), findsNothing);
     expect(find.text('1片 · 08:00, 20:00'), findsNothing);
   });

@@ -117,26 +117,52 @@ class _MedicationListItem extends ConsumerWidget {
             const SizedBox(width: 8),
             IconButton(
               tooltip: '删除药品',
-              onPressed: () async {
-                try {
-                  await ref
-                      .read(medicationRepositoryProvider)
-                      .deleteMedication(medication.id);
-                } catch (_) {
-                  if (!context.mounted) {
-                    return;
-                  }
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(const SnackBar(content: Text('删除失败，请稍后再试')));
-                }
-              },
+              onPressed: () => _confirmAndDelete(context, ref),
               icon: const Icon(Icons.delete_outline),
             ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _confirmAndDelete(BuildContext context, WidgetRef ref) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('确认删除药品？'),
+          content: Text('删除 ${medication.name} 后，会同时移除相关服药记录。'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('删除'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldDelete != true || !context.mounted) {
+      return;
+    }
+
+    try {
+      await ref
+          .read(medicationRepositoryProvider)
+          .deleteMedication(medication.id);
+    } catch (_) {
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('删除失败，请稍后再试')));
+    }
   }
 }
 

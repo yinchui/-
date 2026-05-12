@@ -10,6 +10,7 @@ final saveMedicationControllerProvider = Provider<SaveMedicationController>((
 ) {
   return SaveMedicationController(
     repository: ref.watch(medicationRepositoryProvider),
+    userId: ref.watch(currentUserIdProvider),
     now: () => ref.read(nowProvider).toUtc(),
   );
 });
@@ -17,13 +18,16 @@ final saveMedicationControllerProvider = Provider<SaveMedicationController>((
 class SaveMedicationController {
   SaveMedicationController({
     required MedicationRepository repository,
+    required String userId,
     DateTime Function()? now,
     Uuid? uuid,
   }) : _repository = repository,
+       _userId = userId,
        _now = now ?? (() => DateTime.now().toUtc()),
        _uuid = uuid ?? const Uuid();
 
   final MedicationRepository _repository;
+  final String _userId;
   final DateTime Function() _now;
   final Uuid _uuid;
 
@@ -48,7 +52,7 @@ class SaveMedicationController {
     await _repository.saveMedication(
       Medication(
         id: _uuid.v4(),
-        userId: 'local',
+        userId: _userId,
         name: trimmedName,
         dosage: trimmedDosage,
         schedule: schedule,
@@ -59,7 +63,11 @@ class SaveMedicationController {
   }
 
   List<String> _parseSchedule(String input) {
-    final parts = input.split(',').map((part) => part.trim()).toList();
+    final parts = input
+        .replaceAll('，', ',')
+        .split(',')
+        .map((part) => part.trim())
+        .toList();
     if (parts.isEmpty || parts.every((part) => part.isEmpty)) {
       throw ArgumentError('服用时间不能为空');
     }

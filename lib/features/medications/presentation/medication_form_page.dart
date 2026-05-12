@@ -62,6 +62,7 @@ class _MedicationFormPageState extends ConsumerState<MedicationFormPage> {
                   decoration: const InputDecoration(
                     labelText: '服用时间',
                     hintText: '08:00,20:00',
+                    helperText: '多个时间用逗号分隔，例如 08:00,20:00',
                     border: OutlineInputBorder(),
                   ),
                 ),

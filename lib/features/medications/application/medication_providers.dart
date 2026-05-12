@@ -20,6 +20,12 @@ final nowProvider = Provider<DateTime>((ref) {
   return DateTime.now();
 });
 
+const localUserId = '00000000-0000-4000-8000-000000000000';
+
+final currentUserIdProvider = Provider<String>((ref) {
+  return localUserId;
+});
+
 final todayProvider = Provider<DateTime>((ref) {
   final now = ref.watch(nowProvider);
   return DateTime(now.year, now.month, now.day);
