@@ -18,17 +18,21 @@ class InMemoryMedicationRepository implements MedicationRepository {
 
     controller = StreamController<List<Medication>>(
       onListen: () async {
-        subscription = _medicationsController.stream.listen((medications) {
-          if (controller.isClosed) {
-            return;
-          }
+        subscription = _medicationsController.stream.listen(
+          (medications) {
+            if (controller.isClosed) {
+              return;
+            }
 
-          if (emittedInitialSnapshot) {
-            controller.add(medications);
-          } else {
-            queuedUpdates.add(medications);
-          }
-        }, onError: controller.addError);
+            if (emittedInitialSnapshot) {
+              controller.add(medications);
+            } else {
+              queuedUpdates.add(medications);
+            }
+          },
+          onError: controller.addError,
+          onDone: controller.close,
+        );
 
         try {
           final medications = await getMedications();

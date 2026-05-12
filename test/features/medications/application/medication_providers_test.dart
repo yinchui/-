@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:medication_reminder/features/medications/application/medication_providers.dart';
@@ -57,6 +59,24 @@ void main() {
       await container.pump();
 
       expect(container.read(medicationsProvider).requireValue, [medication]);
+    });
+
+    test('watchMedications completes when repository closes', () async {
+      final repository = InMemoryMedicationRepository();
+      final iterator = StreamIterator(repository.watchMedications());
+      addTearDown(iterator.cancel);
+      addTearDown(repository.close);
+
+      expect(await iterator.moveNext(), isTrue);
+      expect(iterator.current, isEmpty);
+
+      final done = iterator.moveNext();
+      await repository.close();
+
+      await expectLater(
+        done.timeout(const Duration(milliseconds: 100)),
+        completion(isFalse),
+      );
     });
   });
 }
