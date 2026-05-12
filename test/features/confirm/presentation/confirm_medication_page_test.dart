@@ -6,6 +6,7 @@ import 'package:medication_reminder/features/confirm/presentation/confirm_medica
 import 'package:medication_reminder/features/confirm/presentation/slide_to_confirm.dart';
 import 'package:medication_reminder/features/medications/application/medication_providers.dart';
 import 'package:medication_reminder/features/medications/data/in_memory_medication_repository.dart';
+import 'package:medication_reminder/features/medications/data/medication_repository.dart';
 import 'package:medication_reminder/features/medications/domain/medication.dart';
 import 'package:medication_reminder/features/medications/domain/medication_dose.dart';
 import 'package:medication_reminder/features/medications/domain/medication_log.dart';
@@ -54,6 +55,36 @@ void main() {
       expect(logs.single.status, MedicationLogStatus.confirmed);
     },
   );
+
+  testWidgets('keeps confirmation open when saving log fails', (tester) async {
+    final repository = _FailingSaveLogRepository();
+    addTearDown(repository.close);
+    var confirmed = false;
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          medicationRepositoryProvider.overrideWithValue(repository),
+          nowProvider.overrideWithValue(DateTime(2026, 5, 12, 8, 7)),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: ConfirmMedicationPage(
+            doses: [_dose()],
+            onConfirmed: () => confirmed = true,
+          ),
+        ),
+      ),
+    );
+
+    await tester.drag(find.byType(SlideToConfirm), const Offset(500, 0));
+    await tester.pumpAndSettle();
+
+    expect(confirmed, isFalse);
+    expect(find.text('已确认'), findsNothing);
+    expect(find.text('确认失败，请稍后再试'), findsOneWidget);
+    expect(find.text('该吃药了'), findsOneWidget);
+  });
 }
 
 MedicationDose _dose() {
@@ -71,4 +102,12 @@ MedicationDose _dose() {
     status: DoseStatus.pending,
     log: null,
   );
+}
+
+class _FailingSaveLogRepository extends InMemoryMedicationRepository
+    implements MedicationRepository {
+  @override
+  Future<void> saveLog(MedicationLog log) async {
+    throw StateError('cannot save log');
+  }
 }

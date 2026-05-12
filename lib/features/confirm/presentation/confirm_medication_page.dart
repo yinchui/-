@@ -45,7 +45,18 @@ class _ConfirmMedicationPageState extends ConsumerState<ConfirmMedicationPage> {
   }
 
   Future<void> _confirm() async {
-    await ref.read(confirmDoseControllerProvider).confirm(widget.doses);
+    try {
+      await ref.read(confirmDoseControllerProvider).confirm(widget.doses);
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('确认失败，请稍后再试')));
+      return;
+    }
+
     if (!mounted) {
       return;
     }
