@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:medication_reminder/core/storage/app_database.dart';
 
 import '../data/in_memory_medication_repository.dart';
 import '../data/medication_repository.dart';
@@ -10,6 +11,18 @@ final medicationRepositoryProvider = Provider<MedicationRepository>((ref) {
   final repository = InMemoryMedicationRepository();
   ref.onDispose(repository.close);
   return repository;
+});
+
+final appDatabaseProvider = Provider<AppDatabase>((ref) {
+  return AppDatabase();
+});
+
+final sqliteDatabaseProvider = FutureProvider((ref) async {
+  final database = ref.watch(appDatabaseProvider);
+  ref.onDispose(() {
+    database.close();
+  });
+  return database.instance;
 });
 
 final scheduleServiceProvider = Provider<ScheduleService>((ref) {

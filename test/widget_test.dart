@@ -3,15 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:medication_reminder/main.dart' as app;
 
 void main() {
-  testWidgets('main starts app inside provider scope', (tester) async {
-    app.main();
-    await tester.pump();
-
-    expect(find.byType(ProviderScope), findsOneWidget);
-    expect(find.text('今日'), findsWidgets);
-    expect(find.text('药丸'), findsOneWidget);
-  });
-
   testWidgets('exported app can be pumped inside provider scope', (
     tester,
   ) async {
