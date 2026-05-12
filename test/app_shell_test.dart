@@ -6,14 +6,17 @@ void main() {
   testWidgets('bottom navigation switches between main tabs', (tester) async {
     await tester.pumpWidget(const MedicationReminderApp());
 
+    expect(find.byKey(const ValueKey('today-page')), findsOneWidget);
     expect(find.text('今日'), findsWidgets);
 
     await tester.tap(find.byIcon(Icons.calendar_month));
     await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('calendar-page')), findsOneWidget);
     expect(find.text('日历'), findsWidgets);
 
     await tester.tap(find.byIcon(Icons.medication));
     await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('medications-page')), findsOneWidget);
     expect(find.text('药品'), findsWidgets);
   });
 }

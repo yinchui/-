@@ -11,9 +11,9 @@ class _AppShellState extends State<AppShell> {
   int _index = 0;
 
   static const _pages = <Widget>[
-    _PlaceholderPage(title: '今日'),
-    _PlaceholderPage(title: '日历'),
-    _PlaceholderPage(title: '药品'),
+    _PlaceholderPage(key: ValueKey('today-page'), title: '今日'),
+    _PlaceholderPage(key: ValueKey('calendar-page'), title: '日历'),
+    _PlaceholderPage(key: ValueKey('medications-page'), title: '药品'),
   ];
 
   @override
@@ -37,7 +37,7 @@ class _AppShellState extends State<AppShell> {
 }
 
 class _PlaceholderPage extends StatelessWidget {
-  const _PlaceholderPage({required this.title});
+  const _PlaceholderPage({super.key, required this.title});
 
   final String title;
 
