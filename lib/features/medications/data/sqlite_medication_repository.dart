@@ -15,16 +15,61 @@ class SqliteMedicationRepository implements MedicationRepository {
   final _medicationsController = StreamController<List<Medication>>.broadcast();
 
   @override
-  Stream<List<Medication>> watchMedications() async* {
-    yield await getMedications();
-    yield* _medicationsController.stream;
+  Stream<List<Medication>> watchMedications() {
+    late StreamController<List<Medication>> controller;
+    StreamSubscription<List<Medication>>? subscription;
+    final queuedUpdates = <List<Medication>>[];
+    var emittedInitialSnapshot = false;
+
+    controller = StreamController<List<Medication>>(
+      onListen: () async {
+        subscription = _medicationsController.stream.listen((medications) {
+          if (controller.isClosed) {
+            return;
+          }
+
+          if (emittedInitialSnapshot) {
+            controller.add(medications);
+          } else {
+            queuedUpdates.add(medications);
+          }
+        }, onError: controller.addError);
+
+        try {
+          final medications = await getMedications();
+          if (controller.isClosed) {
+            return;
+          }
+
+          controller.add(medications);
+          emittedInitialSnapshot = true;
+
+          for (final queuedUpdate in queuedUpdates) {
+            if (controller.isClosed) {
+              return;
+            }
+            controller.add(queuedUpdate);
+          }
+          queuedUpdates.clear();
+        } catch (error, stackTrace) {
+          if (!controller.isClosed) {
+            controller.addError(error, stackTrace);
+          }
+        }
+      },
+      onCancel: () async {
+        await subscription?.cancel();
+      },
+    );
+
+    return controller.stream;
   }
 
   @override
   Future<List<Medication>> getMedications() async {
     final rows = await _database.query(
       'medications',
-      orderBy: 'created_at ASC',
+      orderBy: 'created_at ASC, id ASC',
     );
     return rows.map(Medication.fromMap).toList();
   }
@@ -42,18 +87,24 @@ class SqliteMedicationRepository implements MedicationRepository {
       final action = existingRows.isEmpty
           ? SyncAction.insert
           : SyncAction.update;
+      final medicationMap = medication.toMap();
 
-      await transaction.insert(
-        'medications',
-        medication.toMap(),
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      if (existingRows.isEmpty) {
+        await transaction.insert('medications', medicationMap);
+      } else {
+        await transaction.update(
+          'medications',
+          medicationMap,
+          where: 'id = ?',
+          whereArgs: [medication.id],
+        );
+      }
       await _enqueue(
         transaction,
         tableName: 'medications',
         recordId: medication.id,
         action: action,
-        payload: medication.toMap(),
+        payload: medicationMap,
       );
     });
 
@@ -86,7 +137,7 @@ class SqliteMedicationRepository implements MedicationRepository {
       'medication_logs',
       where: 'date = ?',
       whereArgs: [_formatDate(date)],
-      orderBy: 'scheduled_time ASC',
+      orderBy: 'scheduled_time ASC, id ASC',
     );
     return rows.map(MedicationLog.fromMap).toList();
   }
@@ -94,17 +145,34 @@ class SqliteMedicationRepository implements MedicationRepository {
   @override
   Future<void> saveLog(MedicationLog log) async {
     await _database.transaction((transaction) async {
-      await transaction.insert(
+      final existingRows = await transaction.query(
         'medication_logs',
-        log.toMap(),
-        conflictAlgorithm: ConflictAlgorithm.replace,
+        columns: const ['id'],
+        where: 'id = ?',
+        whereArgs: [log.id],
+        limit: 1,
       );
+      final action = existingRows.isEmpty
+          ? SyncAction.insert
+          : SyncAction.update;
+      final logMap = log.toMap();
+
+      if (existingRows.isEmpty) {
+        await transaction.insert('medication_logs', logMap);
+      } else {
+        await transaction.update(
+          'medication_logs',
+          logMap,
+          where: 'id = ?',
+          whereArgs: [log.id],
+        );
+      }
       await _enqueue(
         transaction,
         tableName: 'medication_logs',
         recordId: log.id,
-        action: SyncAction.insert,
-        payload: log.toMap(),
+        action: action,
+        payload: logMap,
       );
     });
   }
@@ -118,7 +186,12 @@ class SqliteMedicationRepository implements MedicationRepository {
       return;
     }
 
-    _medicationsController.add(await getMedications());
+    final medications = await getMedications();
+    if (_medicationsController.isClosed) {
+      return;
+    }
+
+    _medicationsController.add(medications);
   }
 
   Future<void> _enqueue(
