@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:medication_reminder/features/calendar/presentation/calendar_page.dart';
 import 'package:medication_reminder/features/medications/presentation/medications_page.dart';
 import 'package:medication_reminder/features/today/presentation/today_page.dart';
 
@@ -15,7 +16,7 @@ class _AppShellState extends State<AppShell> {
 
   static const _pages = <Widget>[
     TodayPage(),
-    _PlaceholderPage(key: ValueKey('calendar-page'), title: '日历'),
+    CalendarPage(),
     MedicationsPage(),
   ];
 
@@ -43,20 +44,5 @@ class _AppShellState extends State<AppShell> {
     } catch (_) {
       return ProviderScope(child: shell);
     }
-  }
-}
-
-class _PlaceholderPage extends StatelessWidget {
-  const _PlaceholderPage({super.key, required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Center(
-        child: Text(title, style: Theme.of(context).textTheme.headlineMedium),
-      ),
-    );
   }
 }
