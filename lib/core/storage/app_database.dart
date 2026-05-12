@@ -9,6 +9,8 @@ class AppDatabase {
 
   Database? _database;
 
+  Future<Database> get instance => database;
+
   Future<Database> get database async {
     final existingDatabase = _database;
     if (existingDatabase != null) {

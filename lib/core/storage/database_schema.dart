@@ -43,8 +43,7 @@ ON medication_logs (date)
 ''',
     '''
 CREATE INDEX idx_sync_queue_unsynced
-ON sync_queue (synced)
-WHERE synced = 0
+ON sync_queue (synced, created_at)
 ''',
   ];
 }
