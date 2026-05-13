@@ -10,4 +10,6 @@ class SyncResult {
 
 abstract class SyncService {
   Future<SyncResult> pushPendingChanges();
+
+  Future<SyncResult> pullRemoteChanges();
 }

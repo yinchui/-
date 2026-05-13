@@ -3,10 +3,11 @@
 ## Supabase
 
 1. Create a Supabase project.
-2. Run `supabase/migrations/202605130001_create_medication_tables.sql`.
-3. Enable Google provider in Supabase Auth.
-4. Add app URL scheme and deep links after the Android package name is finalized.
-5. Store `SUPABASE_URL` and `SUPABASE_ANON_KEY` in local build configuration.
+2. Run all SQL files in `supabase/migrations/` in filename order.
+3. Build the app with `--dart-define=SUPABASE_URL=<project-url>` and
+   `--dart-define=SUPABASE_ANON_KEY=<anon-key>`.
+4. This personal build uses the app's fixed local user id for sync. Do not
+   publish the APK publicly with the same Supabase anon key.
 
 ## UptimeRobot
 

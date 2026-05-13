@@ -8,11 +8,14 @@ class SupabaseSyncService implements SyncService {
   SupabaseSyncService({
     required Database database,
     required SupabaseClient client,
+    required String userId,
   }) : _database = database,
-       _client = client;
+       _client = client,
+       _userId = userId;
 
   final Database _database;
   final SupabaseClient _client;
+  final String _userId;
 
   @override
   Future<SyncResult> pushPendingChanges() async {
@@ -44,6 +47,49 @@ class SupabaseSyncService implements SyncService {
     return SyncResult(pushed: pushed, failed: failed);
   }
 
+  @override
+  Future<SyncResult> pullRemoteChanges() async {
+    var pulled = 0;
+    var failed = 0;
+
+    try {
+      final medicationRows = await _client
+          .from('medications')
+          .select()
+          .eq('user_id', _userId);
+      await _database.transaction((transaction) async {
+        for (final row in medicationRows) {
+          await transaction.insert(
+            'medications',
+            encodeLocalMedicationRow(Map<String, Object?>.from(row)),
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+          pulled += 1;
+        }
+      });
+    } catch (_) {
+      failed += 1;
+    }
+
+    try {
+      final logRows = await _client.from('medication_logs').select();
+      await _database.transaction((transaction) async {
+        for (final row in logRows) {
+          await transaction.insert(
+            'medication_logs',
+            Map<String, Object?>.from(row),
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+          pulled += 1;
+        }
+      });
+    } catch (_) {
+      failed += 1;
+    }
+
+    return SyncResult(pushed: pulled, failed: failed);
+  }
+
   Future<void> _pushRow(Map<String, Object?> row) async {
     final table = row['table_name']! as String;
     final action = row['action']! as String;
@@ -72,4 +118,17 @@ Map<String, Object?> decodeSupabasePayload(String table, String payload) {
   }
 
   return decoded;
+}
+
+Map<String, Object?> encodeLocalMedicationRow(Map<String, Object?> row) {
+  final encoded = Map<String, Object?>.from(row);
+
+  if (encoded['schedule'] is! String) {
+    encoded['schedule'] = jsonEncode(encoded['schedule']);
+  }
+  if (encoded['daily_plans'] is! String) {
+    encoded['daily_plans'] = jsonEncode(encoded['daily_plans'] ?? const []);
+  }
+
+  return encoded;
 }
