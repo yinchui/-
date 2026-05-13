@@ -33,6 +33,7 @@ class AppDatabase {
           await database.execute(statement);
         }
       },
+      onUpgrade: DatabaseSchema.upgrade,
     );
 
     _database = openedDatabase;

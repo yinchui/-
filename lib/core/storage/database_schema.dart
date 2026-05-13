@@ -1,7 +1,9 @@
+import 'package:sqflite/sqflite.dart';
+
 class DatabaseSchema {
   const DatabaseSchema._();
 
-  static const version = 1;
+  static const version = 2;
 
   static const createStatements = [
     '''
@@ -11,6 +13,9 @@ CREATE TABLE medications (
   name TEXT NOT NULL,
   dosage TEXT NOT NULL,
   schedule TEXT NOT NULL,
+  start_date TEXT,
+  duration_days INTEGER,
+  daily_plans TEXT NOT NULL DEFAULT '[]',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 )
@@ -46,4 +51,22 @@ CREATE INDEX idx_sync_queue_unsynced
 ON sync_queue (synced, created_at)
 ''',
   ];
+
+  static Future<void> upgrade(
+    DatabaseExecutor database,
+    int oldVersion,
+    int newVersion,
+  ) async {
+    if (oldVersion < 2 && newVersion >= 2) {
+      await database.execute(
+        'ALTER TABLE medications ADD COLUMN start_date TEXT',
+      );
+      await database.execute(
+        'ALTER TABLE medications ADD COLUMN duration_days INTEGER',
+      );
+      await database.execute(
+        "ALTER TABLE medications ADD COLUMN daily_plans TEXT NOT NULL DEFAULT '[]'",
+      );
+    }
+  }
 }

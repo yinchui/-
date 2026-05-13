@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:medication_reminder/core/storage/database_schema.dart';
 import 'package:medication_reminder/features/medications/data/sqlite_medication_repository.dart';
 import 'package:medication_reminder/features/medications/domain/medication.dart';
+import 'package:medication_reminder/features/medications/domain/medication_daily_plan.dart';
 import 'package:medication_reminder/features/medications/domain/medication_log.dart';
 import 'package:medication_reminder/features/medications/domain/sync_queue_item.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -48,6 +49,36 @@ void main() {
       expect(queueItems.single.synced, isFalse);
     },
   );
+
+  test('saveMedication persists course daily plans', () async {
+    final medication = _medication(
+      startDate: DateTime(2026, 5, 13),
+      durationDays: 2,
+      dailyPlans: [
+        MedicationDailyPlan(
+          date: DateTime(2026, 5, 13),
+          dayIndex: 1,
+          dosage: '1 tablet',
+          schedule: const ['08:00'],
+        ),
+        MedicationDailyPlan(
+          date: DateTime(2026, 5, 14),
+          dayIndex: 2,
+          dosage: '2 tablets',
+          schedule: const ['08:00', '20:00'],
+        ),
+      ],
+    );
+
+    await repository.saveMedication(medication);
+
+    expect(await repository.getMedications(), [medication]);
+    final queueItems = await _syncQueueItems(database);
+    expect(
+      queueItems.single.payload['daily_plans'],
+      medication.toMap()['daily_plans'],
+    );
+  });
 
   test(
     'saveMedication enqueues update when medication already exists',
@@ -264,6 +295,9 @@ Medication _medication({
   String id = 'medication-1',
   String name = 'Daily Vitamin',
   String dosage = '1 tablet',
+  DateTime? startDate,
+  int? durationDays,
+  List<MedicationDailyPlan> dailyPlans = const [],
   DateTime? createdAt,
   DateTime? updatedAt,
 }) {
@@ -273,6 +307,9 @@ Medication _medication({
     name: name,
     dosage: dosage,
     schedule: const ['08:00', '20:00'],
+    startDate: startDate,
+    durationDays: durationDays,
+    dailyPlans: dailyPlans,
     createdAt: createdAt ?? DateTime.utc(2026, 5, 13, 7, 30),
     updatedAt: updatedAt ?? DateTime.utc(2026, 5, 13, 7, 30),
   );

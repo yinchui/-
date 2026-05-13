@@ -7,8 +7,8 @@ void main() {
   setUpAll(sqfliteFfiInit);
 
   group('DatabaseSchema', () {
-    test('uses initial schema version', () {
-      expect(DatabaseSchema.version, 1);
+    test('uses course dosing schema version', () {
+      expect(DatabaseSchema.version, 2);
     });
 
     test('creates medication, log, and sync queue tables', () {
@@ -25,6 +25,9 @@ void main() {
       );
 
       expect(medications, contains('schedule text not null'));
+      expect(medications, contains('start_date text'));
+      expect(medications, contains('duration_days integer'));
+      expect(medications, contains("daily_plans text not null default '[]'"));
     });
 
     test('constrains medication log status, date, and parent medication', () {
@@ -145,6 +148,43 @@ WHERE type IN ('table', 'index')
         ]);
       },
     );
+
+    test('upgrades version 1 medication rows with course columns', () async {
+      final database = await databaseFactoryFfi.openDatabase(
+        inMemoryDatabasePath,
+      );
+      addTearDown(database.close);
+      await database.execute('PRAGMA foreign_keys = ON');
+      await database.execute('''
+CREATE TABLE medications (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  dosage TEXT NOT NULL,
+  schedule TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+)
+''');
+      await _insertMedication(database);
+
+      await DatabaseSchema.upgrade(database, 1, 2);
+
+      final columns = await database.rawQuery(
+        "PRAGMA table_info('medications')",
+      );
+      expect(columns.map((column) => column['name']), contains('start_date'));
+      expect(
+        columns.map((column) => column['name']),
+        contains('duration_days'),
+      );
+      expect(columns.map((column) => column['name']), contains('daily_plans'));
+
+      final rows = await database.query('medications');
+      expect(rows.single['start_date'], isNull);
+      expect(rows.single['duration_days'], isNull);
+      expect(rows.single['daily_plans'], '[]');
+    });
   });
 
   group('AppDatabase', () {
