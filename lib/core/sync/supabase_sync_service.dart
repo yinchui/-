@@ -55,16 +55,21 @@ class SupabaseSyncService implements SyncService {
       return;
     }
 
-    await _client.from(table).upsert(_decodePayload(table, payload));
+    await _client.from(table).upsert(decodeSupabasePayload(table, payload));
   }
+}
 
-  Map<String, Object?> _decodePayload(String table, String payload) {
-    final decoded = Map<String, Object?>.from(jsonDecode(payload) as Map);
+Map<String, Object?> decodeSupabasePayload(String table, String payload) {
+  final decoded = Map<String, Object?>.from(jsonDecode(payload) as Map);
 
-    if (table == 'medications' && decoded['schedule'] is String) {
+  if (table == 'medications') {
+    if (decoded['schedule'] is String) {
       decoded['schedule'] = jsonDecode(decoded['schedule']! as String);
     }
-
-    return decoded;
+    if (decoded['daily_plans'] is String) {
+      decoded['daily_plans'] = jsonDecode(decoded['daily_plans']! as String);
+    }
   }
+
+  return decoded;
 }
