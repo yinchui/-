@@ -2,11 +2,80 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:medication_reminder/features/medications/domain/medication.dart';
+import 'package:medication_reminder/features/medications/domain/medication_daily_plan.dart';
 import 'package:medication_reminder/features/medications/domain/medication_log.dart';
 import 'package:medication_reminder/features/medications/domain/sync_queue_item.dart';
 
 void main() {
   group('Medication', () {
+    test('serializes course daily plans and restores an equal model', () {
+      final medication = Medication(
+        id: 'm1',
+        userId: 'u1',
+        name: '阿莫西林',
+        dosage: '1粒',
+        schedule: const ['08:00'],
+        startDate: DateTime(2026, 5, 13, 9),
+        durationDays: 2,
+        dailyPlans: [
+          MedicationDailyPlan(
+            date: DateTime(2026, 5, 13, 9),
+            dayIndex: 1,
+            dosage: '1粒',
+            schedule: const ['08:00'],
+          ),
+          MedicationDailyPlan(
+            date: DateTime(2026, 5, 14),
+            dayIndex: 2,
+            dosage: '2粒',
+            schedule: const ['08:00', '20:00'],
+          ),
+        ],
+        createdAt: DateTime(2026, 5, 12, 7, 30),
+        updatedAt: DateTime(2026, 5, 12, 8),
+      );
+
+      final map = medication.toMap();
+
+      expect(map['start_date'], '2026-05-13');
+      expect(map['duration_days'], 2);
+      expect(map['daily_plans'], isA<String>());
+      expect(jsonDecode(map['daily_plans']! as String), [
+        {
+          'date': '2026-05-13',
+          'day_index': 1,
+          'dosage': '1粒',
+          'schedule': ['08:00'],
+        },
+        {
+          'date': '2026-05-14',
+          'day_index': 2,
+          'dosage': '2粒',
+          'schedule': ['08:00', '20:00'],
+        },
+      ]);
+      expect(medication.startDate, DateTime(2026, 5, 13));
+      expect(Medication.fromMap(map), medication);
+    });
+
+    test('restores legacy medication maps without course fields', () {
+      final medication = Medication.fromMap({
+        'id': 'm1',
+        'user_id': 'u1',
+        'name': '阿莫西林',
+        'dosage': '2粒',
+        'schedule': '["08:00","20:00"]',
+        'created_at': DateTime.utc(2026, 5, 12, 7, 30).toIso8601String(),
+        'updated_at': DateTime.utc(2026, 5, 12, 8).toIso8601String(),
+      });
+
+      expect(medication.startDate, isNull);
+      expect(medication.durationDays, isNull);
+      expect(medication.dailyPlans, isEmpty);
+      expect(medication.dosage, '2粒');
+      expect(medication.schedule, const ['08:00', '20:00']);
+    });
+
     test('serializes schedule as JSON string and restores an equal model', () {
       final medication = Medication(
         id: 'm1',
@@ -54,6 +123,26 @@ void main() {
       expect(copy.toMap()['created_at'], endsWith('Z'));
       expect(copy.toMap()['updated_at'], endsWith('Z'));
       expect(medication.name, '阿莫西林');
+    });
+  });
+
+  group('MedicationDailyPlan', () {
+    test('serializes date-only schedule plan and restores an equal model', () {
+      final plan = MedicationDailyPlan(
+        date: DateTime(2026, 5, 13, 18, 30),
+        dayIndex: 1,
+        dosage: '1.5片',
+        schedule: const ['08:00', '20:00'],
+      );
+
+      final map = plan.toMap();
+
+      expect(plan.date, DateTime(2026, 5, 13));
+      expect(map['date'], '2026-05-13');
+      expect(map['day_index'], 1);
+      expect(map['dosage'], '1.5片');
+      expect(map['schedule'], const ['08:00', '20:00']);
+      expect(MedicationDailyPlan.fromMap(map), plan);
     });
   });
 
