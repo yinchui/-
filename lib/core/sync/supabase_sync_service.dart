@@ -17,6 +17,43 @@ class SupabaseSyncService implements SyncService {
   final SupabaseClient _client;
   final String _userId;
 
+  Future<SyncResult> pushLocalSnapshot() async {
+    var pushed = 0;
+    var failed = 0;
+
+    final medicationRows = await _database.query(
+      'medications',
+      orderBy: 'created_at ASC, id ASC',
+    );
+    for (final row in medicationRows) {
+      try {
+        await _client
+            .from('medications')
+            .upsert(decodeSupabasePayload('medications', jsonEncode(row)));
+        pushed += 1;
+      } catch (_) {
+        failed += 1;
+      }
+    }
+
+    final logRows = await _database.query(
+      'medication_logs',
+      orderBy: 'scheduled_time ASC, id ASC',
+    );
+    for (final row in logRows) {
+      try {
+        await _client
+            .from('medication_logs')
+            .upsert(decodeSupabasePayload('medication_logs', jsonEncode(row)));
+        pushed += 1;
+      } catch (_) {
+        failed += 1;
+      }
+    }
+
+    return SyncResult(pushed: pushed, failed: failed);
+  }
+
   @override
   Future<SyncResult> pushPendingChanges() async {
     final rows = await _database.query(

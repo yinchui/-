@@ -55,6 +55,7 @@ Future<MedicationRepository> _buildMedicationRepository({
       client: Supabase.instance.client,
       userId: localUserId,
     );
+    await syncService.pushLocalSnapshot();
     await syncService.pushPendingChanges();
     await syncService.pullRemoteChanges();
     return SyncingMedicationRepository(
