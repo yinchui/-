@@ -9,14 +9,17 @@ class MedicationDose {
     required this.scheduledTime,
     required this.status,
     required this.log,
-  });
+    String? dosage,
+  }) : _dosage = dosage;
 
   final Medication medication;
   final DateTime scheduledTime;
   final DoseStatus status;
   final MedicationLog? log;
+  final String? _dosage;
 
   String get id => '${medication.id}-${scheduledTime.toIso8601String()}';
+  String get dosage => _dosage ?? medication.dosage;
 
   @override
   bool operator ==(Object other) {
@@ -25,9 +28,11 @@ class MedicationDose {
             medication == other.medication &&
             scheduledTime == other.scheduledTime &&
             status == other.status &&
-            log == other.log;
+            log == other.log &&
+            dosage == other.dosage;
   }
 
   @override
-  int get hashCode => Object.hash(medication, scheduledTime, status, log);
+  int get hashCode =>
+      Object.hash(medication, scheduledTime, status, log, dosage);
 }

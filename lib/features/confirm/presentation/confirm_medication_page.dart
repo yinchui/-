@@ -174,7 +174,7 @@ class _DoseTile extends StatelessWidget {
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    dose.medication.dosage,
+                    dose.dosage,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(

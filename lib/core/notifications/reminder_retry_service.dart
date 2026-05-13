@@ -19,7 +19,7 @@ class ReminderRetryService {
       ScheduledNotificationRequest(
         id: stableNotificationId('retry-${dose.id}'),
         title: '还没确认服药',
-        body: '${dose.medication.name} · ${dose.medication.dosage}',
+        body: '${dose.medication.name} · ${dose.dosage}',
         scheduledAt: now.add(const Duration(minutes: 5)),
         payload: 'retry:${dose.id}',
       ),

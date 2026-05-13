@@ -1,4 +1,5 @@
 import 'package:medication_reminder/features/medications/domain/medication.dart';
+import 'package:medication_reminder/features/medications/domain/medication_daily_plan.dart';
 import 'package:medication_reminder/features/medications/domain/medication_dose.dart';
 import 'package:medication_reminder/features/medications/domain/medication_log.dart';
 
@@ -12,23 +13,35 @@ class ScheduleService {
     final doses = <MedicationDose>[];
 
     for (final medication in medications) {
-      for (final scheduleTime in medication.schedule) {
-        final scheduledTime = _combine(date, scheduleTime);
-        final log = _matchingLog(
-          logs: logs,
-          medicationId: medication.id,
-          date: date,
-          scheduledTime: scheduledTime,
-        );
-
-        doses.add(
-          MedicationDose(
-            medication: medication,
-            scheduledTime: scheduledTime,
-            status: _statusFor(log, now: now),
-            log: log,
-          ),
-        );
+      if (medication.dailyPlans.isNotEmpty) {
+        final dailyPlan = _matchingDailyPlan(medication, date);
+        if (dailyPlan == null) {
+          continue;
+        }
+        for (final scheduleTime in dailyPlan.schedule) {
+          doses.add(
+            _buildDose(
+              medication: medication,
+              dosage: dailyPlan.dosage,
+              scheduleTime: scheduleTime,
+              logs: logs,
+              date: date,
+              now: now,
+            ),
+          );
+        }
+      } else {
+        for (final scheduleTime in medication.schedule) {
+          doses.add(
+            _buildDose(
+              medication: medication,
+              scheduleTime: scheduleTime,
+              logs: logs,
+              date: date,
+              now: now,
+            ),
+          );
+        }
       }
     }
 
@@ -42,6 +55,44 @@ class ScheduleService {
     final minute = int.parse(parts[1]);
 
     return DateTime(date.year, date.month, date.day, hour, minute);
+  }
+
+  MedicationDailyPlan? _matchingDailyPlan(
+    Medication medication,
+    DateTime date,
+  ) {
+    for (final dailyPlan in medication.dailyPlans) {
+      if (_sameDate(dailyPlan.date, date)) {
+        return dailyPlan;
+      }
+    }
+
+    return null;
+  }
+
+  MedicationDose _buildDose({
+    required Medication medication,
+    required String scheduleTime,
+    required List<MedicationLog> logs,
+    required DateTime date,
+    required DateTime now,
+    String? dosage,
+  }) {
+    final scheduledTime = _combine(date, scheduleTime);
+    final log = _matchingLog(
+      logs: logs,
+      medicationId: medication.id,
+      date: date,
+      scheduledTime: scheduledTime,
+    );
+
+    return MedicationDose(
+      medication: medication,
+      scheduledTime: scheduledTime,
+      status: _statusFor(log, now: now),
+      log: log,
+      dosage: dosage,
+    );
   }
 
   MedicationLog? _matchingLog({

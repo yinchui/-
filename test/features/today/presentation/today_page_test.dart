@@ -5,6 +5,7 @@ import 'package:medication_reminder/core/theme/app_theme.dart';
 import 'package:medication_reminder/features/medications/application/medication_providers.dart';
 import 'package:medication_reminder/features/medications/data/in_memory_medication_repository.dart';
 import 'package:medication_reminder/features/medications/domain/medication.dart';
+import 'package:medication_reminder/features/medications/domain/medication_daily_plan.dart';
 import 'package:medication_reminder/features/medications/domain/medication_log.dart';
 import 'package:medication_reminder/features/today/presentation/today_page.dart';
 
@@ -83,15 +84,56 @@ void main() {
     expect(find.text('漏服'), findsOneWidget);
     expect(find.text('待服用'), findsNothing);
   });
+
+  testWidgets('shows course medication with dosage for selected day', (
+    tester,
+  ) async {
+    final repository = InMemoryMedicationRepository();
+    addTearDown(repository.close);
+
+    await repository.saveMedication(
+      _medication(
+        dailyPlans: [
+          MedicationDailyPlan(
+            date: DateTime(2026, 5, 13),
+            dayIndex: 3,
+            dosage: '第3天半粒',
+            schedule: const ['09:00'],
+          ),
+        ],
+      ),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          medicationRepositoryProvider.overrideWithValue(repository),
+          todayProvider.overrideWithValue(DateTime(2026, 5, 13)),
+          nowProvider.overrideWithValue(DateTime(2026, 5, 13, 9, 15)),
+        ],
+        child: MaterialApp(theme: AppTheme.light(), home: const TodayPage()),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('09:00'), findsWidgets);
+    expect(find.text('第3天半粒'), findsOneWidget);
+    expect(find.text('1片'), findsNothing);
+  });
 }
 
-Medication _medication({List<String> schedule = const ['08:00', '20:00']}) {
+Medication _medication({
+  List<String> schedule = const ['08:00', '20:00'],
+  List<MedicationDailyPlan> dailyPlans = const [],
+}) {
   return Medication(
     id: 'medication-1',
     userId: 'user-1',
     name: '维生素D',
     dosage: '1片',
     schedule: schedule,
+    dailyPlans: dailyPlans,
     createdAt: DateTime.utc(2026, 5, 13, 7, 30),
     updatedAt: DateTime.utc(2026, 5, 13, 7, 30),
   );

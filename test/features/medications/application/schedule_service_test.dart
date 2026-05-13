@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:medication_reminder/features/medications/application/schedule_service.dart';
 import 'package:medication_reminder/features/medications/domain/medication.dart';
+import 'package:medication_reminder/features/medications/domain/medication_daily_plan.dart';
 import 'package:medication_reminder/features/medications/domain/medication_dose.dart';
 import 'package:medication_reminder/features/medications/domain/medication_log.dart';
 
@@ -130,6 +131,54 @@ void main() {
         expect(doses.single.status, DoseStatus.confirmed);
       },
     );
+
+    test('buildDosesForDate uses matching course daily plan dosage', () {
+      final service = ScheduleService();
+      final medication = _medication(
+        dailyPlans: [
+          MedicationDailyPlan(
+            date: DateTime(2026, 5, 13),
+            dayIndex: 3,
+            dosage: '第3天半粒',
+            schedule: const ['09:00'],
+          ),
+        ],
+      );
+
+      final doses = service.buildDosesForDate(
+        medications: [medication],
+        logs: const [],
+        date: DateTime(2026, 5, 13),
+        now: _localDateTime(2026, 5, 13, 8),
+      );
+
+      expect(doses, hasLength(1));
+      expect(doses.single.dosage, '第3天半粒');
+      expect(doses.single.scheduledTime, _localDateTime(2026, 5, 13, 9));
+    });
+
+    test('buildDosesForDate hides course medication outside planned dates', () {
+      final service = ScheduleService();
+      final medication = _medication(
+        dailyPlans: [
+          MedicationDailyPlan(
+            date: DateTime(2026, 5, 13),
+            dayIndex: 1,
+            dosage: '1粒',
+            schedule: const ['09:00'],
+          ),
+        ],
+      );
+
+      final doses = service.buildDosesForDate(
+        medications: [medication],
+        logs: const [],
+        date: DateTime(2026, 5, 14),
+        now: _localDateTime(2026, 5, 14, 8),
+      );
+
+      expect(doses, isEmpty);
+    });
   });
 }
 
@@ -137,6 +186,7 @@ Medication _medication({
   String id = 'medication-1',
   String name = 'Daily Vitamin',
   List<String> schedule = const ['08:00', '20:00'],
+  List<MedicationDailyPlan> dailyPlans = const [],
 }) {
   return Medication(
     id: id,
@@ -144,6 +194,7 @@ Medication _medication({
     name: name,
     dosage: '1 tablet',
     schedule: schedule,
+    dailyPlans: dailyPlans,
     createdAt: DateTime.utc(2026, 5, 13, 7, 30),
     updatedAt: DateTime.utc(2026, 5, 13, 7, 30),
   );
