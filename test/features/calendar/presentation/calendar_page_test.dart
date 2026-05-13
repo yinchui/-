@@ -6,6 +6,7 @@ import 'package:medication_reminder/features/calendar/presentation/calendar_page
 import 'package:medication_reminder/features/medications/application/medication_providers.dart';
 import 'package:medication_reminder/features/medications/data/in_memory_medication_repository.dart';
 import 'package:medication_reminder/features/medications/domain/medication.dart';
+import 'package:medication_reminder/features/medications/domain/medication_daily_plan.dart';
 import 'package:medication_reminder/features/medications/domain/medication_log.dart';
 
 void main() {
@@ -68,12 +69,56 @@ void main() {
     expect(find.text('已服用'), findsOneWidget);
     expect(find.text('20:00 · 漏服'), findsOneWidget);
   });
+
+  testWidgets('calendar page shows future planned course doses', (
+    tester,
+  ) async {
+    final repository = InMemoryMedicationRepository();
+    addTearDown(repository.close);
+
+    await repository.saveMedication(
+      _medication(
+        id: 'course-1',
+        name: '头孢',
+        schedule: const ['09:00'],
+        dailyPlans: [
+          MedicationDailyPlan(
+            date: DateTime(2026, 5, 15),
+            dayIndex: 3,
+            dosage: '第3天半片',
+            schedule: ['09:00'],
+          ),
+        ],
+      ),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          medicationRepositoryProvider.overrideWithValue(repository),
+          todayProvider.overrideWithValue(DateTime(2026, 5, 13)),
+          nowProvider.overrideWithValue(DateTime(2026, 5, 13, 12)),
+        ],
+        child: MaterialApp(theme: AppTheme.light(), home: const CalendarPage()),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('15'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('5月15日'), findsOneWidget);
+    expect(find.text('头孢'), findsOneWidget);
+    expect(find.text('第3天半片'), findsOneWidget);
+    expect(find.text('09:00 · 计划中'), findsOneWidget);
+  });
 }
 
 Medication _medication({
   required String id,
   required String name,
   required List<String> schedule,
+  List<MedicationDailyPlan> dailyPlans = const [],
 }) {
   return Medication(
     id: id,
@@ -81,6 +126,9 @@ Medication _medication({
     name: name,
     dosage: '1片',
     schedule: schedule,
+    startDate: dailyPlans.isEmpty ? null : dailyPlans.first.date,
+    durationDays: dailyPlans.isEmpty ? null : dailyPlans.length,
+    dailyPlans: dailyPlans,
     createdAt: DateTime.utc(2026, 5, 1),
     updatedAt: DateTime.utc(2026, 5, 1),
   );

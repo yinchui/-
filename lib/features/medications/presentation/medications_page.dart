@@ -116,6 +116,16 @@ class _MedicationListItem extends ConsumerWidget {
             ),
             const SizedBox(width: 8),
             IconButton(
+              tooltip: '编辑药品',
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (context) =>
+                      MedicationFormPage(medication: medication),
+                ),
+              ),
+              icon: const Icon(Icons.edit_outlined),
+            ),
+            IconButton(
               tooltip: '删除药品',
               onPressed: () => _confirmAndDelete(context, ref),
               icon: const Icon(Icons.delete_outline),

@@ -33,6 +33,7 @@ class SaveMedicationController {
   final Uuid _uuid;
 
   Future<void> save({
+    Medication? existingMedication,
     required String name,
     required String dosage,
     required String scheduleInput,
@@ -66,15 +67,15 @@ class SaveMedicationController {
 
     await _repository.saveMedication(
       Medication(
-        id: _uuid.v4(),
-        userId: _userId,
+        id: existingMedication?.id ?? _uuid.v4(),
+        userId: existingMedication?.userId ?? _userId,
         name: trimmedName,
         dosage: effectiveDosage,
         schedule: schedule,
         startDate: dailyPlans.isEmpty ? null : dailyPlans.first.date,
         durationDays: dailyPlans.isEmpty ? null : dailyPlans.length,
         dailyPlans: dailyPlans,
-        createdAt: now,
+        createdAt: existingMedication?.createdAt ?? now,
         updatedAt: now,
       ),
     );

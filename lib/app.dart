@@ -8,7 +8,7 @@ class MedicationReminderApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '药丸',
+      title: '药记录',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       home: const AppShell(),

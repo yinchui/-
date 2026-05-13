@@ -58,6 +58,52 @@ void main() {
     expect(find.text('维生素 D'), findsNothing);
     expect(find.text('7天疗程 · 08:00, 20:00'), findsNothing);
   });
+
+  testWidgets('edits an existing course medication from the list', (
+    tester,
+  ) async {
+    final repository = InMemoryMedicationRepository();
+    addTearDown(repository.close);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [medicationRepositoryProvider.overrideWithValue(repository)],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const MedicationsPage(),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.add));
+    await tester.pumpAndSettle();
+    await _enterTextField(tester, '药名', '维生素 D');
+    await _enterTextField(tester, '服用天数', '7');
+    await _enterTextField(tester, '服用时间', '08:00');
+    for (final weekday in ['周一', '周二', '周三', '周四', '周五', '周六', '周日']) {
+      await _enterTextField(tester, '$weekday剂量', '1片');
+    }
+    await _scrollMedicationFormUntilVisible(tester, find.text('保存'));
+    await tester.tap(find.text('保存'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('编辑药品'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('编辑药品'), findsOneWidget);
+    await _enterTextField(tester, '药名', '维生素 D3');
+    await _enterTextField(tester, '第3天剂量', '第3天2片');
+    await _scrollMedicationFormUntilVisible(tester, find.text('保存'));
+    await tester.tap(find.text('保存'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('维生素 D'), findsNothing);
+    expect(find.text('维生素 D3'), findsOneWidget);
+
+    final medication = (await repository.getMedications()).single;
+    expect(medication.dailyPlans[2].dosage, '第3天2片');
+  });
 }
 
 Future<void> _scrollMedicationFormUntilVisible(
@@ -82,10 +128,8 @@ Future<void> _enterTextField(
     description: 'TextField with label "$label"',
   );
 
-  final firstField = field.at(0);
-
-  await _scrollMedicationFormUntilVisible(tester, firstField);
-  await tester.enterText(firstField, value);
+  await _scrollMedicationFormUntilVisible(tester, field);
+  await tester.enterText(field.at(0), value);
 }
 
 Finder _medicationFormScrollable() {

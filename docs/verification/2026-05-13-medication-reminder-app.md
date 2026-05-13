@@ -8,6 +8,10 @@ Date: 2026-05-13
 - `flutter test` passed: 52 tests.
 - `flutter analyze` passed: no issues found.
 - `flutter build apk --debug` passed: built `build/app/outputs/flutter-apk/app-debug.apk`.
+- Course dosing update: `dart format .` passed: formatted 50 files, 0 changed.
+- Course dosing update: `flutter test` passed: 66 tests.
+- Course dosing update: `flutter analyze` passed: no issues found.
+- Course dosing update: `flutter build apk --release` passed: built `build/app/outputs/flutter-apk/app-release.apk`.
 
 ## Manual Checks
 
@@ -24,6 +28,10 @@ Observed on device:
 - App restart kept medications in SQLite.
 - Delete confirmation removed the test medication and returned the medication list to the empty state.
 - App startup and main navigation did not show an app-level fatal exception in logcat.
+- Course dosing update was installed with `adb install -r -d /Users/aa/Desktop/yaowan-medication-reminder.apk` successfully.
+- Launch after update showed the app title `药记录` on the Today tab.
+- Automated widget coverage verifies future course doses are visible on the Calendar page.
+- Automated widget coverage verifies existing course medications can be opened from the medication list, edited, saved, and persisted without changing the record identity.
 
 Known gaps from device smoke testing:
 

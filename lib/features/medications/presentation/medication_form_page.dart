@@ -5,9 +5,12 @@ import 'package:medication_reminder/core/theme/app_theme.dart';
 import 'package:medication_reminder/features/medications/application/medication_providers.dart';
 
 import '../application/save_medication_controller.dart';
+import '../domain/medication.dart';
 
 class MedicationFormPage extends ConsumerStatefulWidget {
-  const MedicationFormPage({super.key});
+  const MedicationFormPage({super.key, this.medication});
+
+  final Medication? medication;
 
   @override
   ConsumerState<MedicationFormPage> createState() => _MedicationFormPageState();
@@ -24,6 +27,13 @@ class _MedicationFormPageState extends ConsumerState<MedicationFormPage> {
   final _dailyDosageOverrides = <int, String>{};
   DateTime? _startDate;
   var _isSaving = false;
+  var _didLoadMedication = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMedicationIfNeeded();
+  }
 
   @override
   void dispose() {
@@ -38,13 +48,14 @@ class _MedicationFormPageState extends ConsumerState<MedicationFormPage> {
 
   @override
   Widget build(BuildContext context) {
+    _loadMedicationIfNeeded();
     final today = ref.watch(todayProvider);
     final startDate = _startDate ?? today;
     final duration = _durationDays;
 
     return Scaffold(
       backgroundColor: AppColors.warmBackground,
-      appBar: AppBar(title: const Text('添加药品')),
+      appBar: AppBar(title: Text(widget.medication == null ? '添加药品' : '编辑药品')),
       body: SafeArea(
         child: ListView(
           key: const ValueKey('medication-form-scroll'),
@@ -218,6 +229,7 @@ class _MedicationFormPageState extends ConsumerState<MedicationFormPage> {
             durationDays: int.tryParse(_durationController.text.trim()),
             weeklyDosages: weeklyDosages,
             dailyDosageOverrides: _dailyDosageOverrides,
+            existingMedication: widget.medication,
           );
       if (!mounted) {
         return;
@@ -234,6 +246,40 @@ class _MedicationFormPageState extends ConsumerState<MedicationFormPage> {
       if (mounted) {
         setState(() => _isSaving = false);
       }
+    }
+  }
+
+  void _loadMedicationIfNeeded() {
+    if (_didLoadMedication) {
+      return;
+    }
+    _didLoadMedication = true;
+
+    final medication = widget.medication;
+    if (medication == null) {
+      return;
+    }
+
+    _nameController.text = medication.name;
+    _scheduleController.text = medication.schedule.join(',');
+    if (medication.dailyPlans.isEmpty) {
+      _durationController.text = '1';
+      for (final controller in _weeklyDosageControllers) {
+        controller.text = medication.dosage;
+      }
+      return;
+    }
+
+    _startDate = medication.startDate ?? medication.dailyPlans.first.date;
+    _durationController.text =
+        (medication.durationDays ?? medication.dailyPlans.length).toString();
+
+    for (final controller in _weeklyDosageControllers) {
+      controller.clear();
+    }
+    for (final plan in medication.dailyPlans) {
+      _weeklyDosageControllers[plan.date.weekday - 1].text = plan.dosage;
+      _dailyDosageOverrides[plan.dayIndex] = plan.dosage;
     }
   }
 }

@@ -3,26 +3,31 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:medication_reminder/core/theme/app_theme.dart';
 import 'package:medication_reminder/features/calendar/application/calendar_service.dart';
 import 'package:medication_reminder/features/medications/application/medication_providers.dart';
+import 'package:medication_reminder/features/medications/application/schedule_service.dart';
 import 'package:medication_reminder/features/medications/domain/medication.dart';
+import 'package:medication_reminder/features/medications/domain/medication_dose.dart';
 import 'package:medication_reminder/features/medications/domain/medication_log.dart';
 
 final _calendarServiceProvider = Provider<CalendarService>((ref) {
   return CalendarService();
 });
 
+final _scheduleServiceProvider = Provider<ScheduleService>((ref) {
+  return ScheduleService();
+});
+
 final _calendarMonthDataProvider =
     FutureProvider.family<CalendarMonthData, DateTime>((ref, month) async {
       final repository = ref.watch(medicationRepositoryProvider);
       final service = ref.watch(_calendarServiceProvider);
+      final scheduleService = ref.watch(_scheduleServiceProvider);
+      final now = ref.watch(nowProvider);
       final visibleMonth = DateTime(month.year, month.month);
       final daysInMonth = DateUtils.getDaysInMonth(
         visibleMonth.year,
         visibleMonth.month,
       );
       final medications = await repository.getMedications();
-      final medicationNamesById = {
-        for (final medication in medications) medication.id: medication,
-      };
       final logsByDate = <DateTime, List<MedicationLog>>{};
       final monthLogs = <MedicationLog>[];
 
@@ -36,9 +41,11 @@ final _calendarMonthDataProvider =
       return CalendarMonthData(
         month: visibleMonth,
         logsByDate: logsByDate,
-        medicationById: medicationNamesById,
+        medications: medications,
         stats: service.summarize(monthLogs),
         service: service,
+        scheduleService: scheduleService,
+        now: now,
       );
     });
 
@@ -46,16 +53,20 @@ class CalendarMonthData {
   const CalendarMonthData({
     required this.month,
     required this.logsByDate,
-    required this.medicationById,
+    required this.medications,
     required this.stats,
     required this.service,
+    required this.scheduleService,
+    required this.now,
   });
 
   final DateTime month;
   final Map<DateTime, List<MedicationLog>> logsByDate;
-  final Map<String, Medication> medicationById;
+  final List<Medication> medications;
   final CalendarStats stats;
   final CalendarService service;
+  final ScheduleService scheduleService;
+  final DateTime now;
 
   List<MedicationLog> logsForDate(DateTime date) {
     return logsByDate[DateTime(date.year, date.month, date.day)] ?? const [];
@@ -63,6 +74,15 @@ class CalendarMonthData {
 
   CalendarDayStatus statusForDate(DateTime date) {
     return service.statusForLogs(logsForDate(date));
+  }
+
+  List<MedicationDose> dosesForDate(DateTime date) {
+    return scheduleService.buildDosesForDate(
+      medications: medications,
+      logs: logsForDate(date),
+      date: date,
+      now: now,
+    );
   }
 }
 
@@ -104,7 +124,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
             const SizedBox(height: 16),
             monthDataValue.when(
               data: (monthData) {
-                final selectedLogs = monthData.logsForDate(_selectedDate);
+                final selectedDoses = monthData.dosesForDate(_selectedDate);
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -122,8 +142,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
                     const SizedBox(height: 18),
                     _DayDetails(
                       selectedDate: _selectedDate,
-                      logs: selectedLogs,
-                      medicationById: monthData.medicationById,
+                      doses: selectedDoses,
                     ),
                   ],
                 );
@@ -401,15 +420,10 @@ class _DayCell extends StatelessWidget {
 }
 
 class _DayDetails extends StatelessWidget {
-  const _DayDetails({
-    required this.selectedDate,
-    required this.logs,
-    required this.medicationById,
-  });
+  const _DayDetails({required this.selectedDate, required this.doses});
 
   final DateTime selectedDate;
-  final List<MedicationLog> logs;
-  final Map<String, Medication> medicationById;
+  final List<MedicationDose> doses;
 
   @override
   Widget build(BuildContext context) {
@@ -433,9 +447,9 @@ class _DayDetails extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            if (logs.isEmpty)
+            if (doses.isEmpty)
               const Text(
-                '当天还没有服药记录',
+                '当天还没有服药计划',
                 style: TextStyle(
                   color: AppColors.textSecondary,
                   fontSize: 14,
@@ -443,9 +457,9 @@ class _DayDetails extends StatelessWidget {
                 ),
               )
             else
-              for (final log in logs) ...[
-                _LogRow(log: log, medication: medicationById[log.medicationId]),
-                if (log != logs.last) const Divider(height: 18),
+              for (final dose in doses) ...[
+                _DoseRow(dose: dose),
+                if (dose != doses.last) const Divider(height: 18),
               ],
           ],
         ),
@@ -454,17 +468,28 @@ class _DayDetails extends StatelessWidget {
   }
 }
 
-class _LogRow extends StatelessWidget {
-  const _LogRow({required this.log, required this.medication});
+class _DoseRow extends StatelessWidget {
+  const _DoseRow({required this.dose});
 
-  final MedicationLog log;
-  final Medication? medication;
+  final MedicationDose dose;
 
   @override
   Widget build(BuildContext context) {
-    final isConfirmed = log.status == MedicationLogStatus.confirmed;
-    final statusText = isConfirmed ? '已服用' : '漏服';
-    final statusColor = isConfirmed ? AppColors.green : AppColors.red;
+    final statusText = switch (dose.status) {
+      DoseStatus.confirmed => '已服用',
+      DoseStatus.missed => '漏服',
+      DoseStatus.pending => '计划中',
+    };
+    final statusColor = switch (dose.status) {
+      DoseStatus.confirmed => AppColors.green,
+      DoseStatus.missed => AppColors.red,
+      DoseStatus.pending => AppColors.orange,
+    };
+    final statusBackground = switch (dose.status) {
+      DoseStatus.confirmed => AppColors.greenSoft,
+      DoseStatus.missed => AppColors.redSoft,
+      DoseStatus.pending => AppColors.orangeSoft,
+    };
 
     return Row(
       children: [
@@ -482,7 +507,7 @@ class _LogRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                medication?.name ?? '未知药品',
+                dose.medication.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -493,7 +518,18 @@ class _LogRow extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                '${_formatTime(log.scheduledTime.toLocal())} · $statusText',
+                dose.dosage,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                '${_formatTime(dose.scheduledTime.toLocal())} · $statusText',
                 style: TextStyle(
                   color: statusColor,
                   fontSize: 12,
@@ -506,7 +542,7 @@ class _LogRow extends StatelessWidget {
         const SizedBox(width: 8),
         DecoratedBox(
           decoration: BoxDecoration(
-            color: isConfirmed ? AppColors.greenSoft : AppColors.redSoft,
+            color: statusBackground,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Padding(

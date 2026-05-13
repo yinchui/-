@@ -11,6 +11,6 @@ void main() {
     );
 
     expect(find.text('今日'), findsWidgets);
-    expect(find.text('药丸'), findsOneWidget);
+    expect(find.text('药记录'), findsOneWidget);
   });
 }

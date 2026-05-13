@@ -23,7 +23,7 @@ class _AppShellState extends State<AppShell> {
   @override
   Widget build(BuildContext context) {
     final shell = Scaffold(
-      appBar: _index == 2 ? null : AppBar(title: const Text('药丸')),
+      appBar: _index == 2 ? null : AppBar(title: const Text('药记录')),
       body: _pages[_index],
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
