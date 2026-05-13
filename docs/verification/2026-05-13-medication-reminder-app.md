@@ -11,17 +11,24 @@ Date: 2026-05-13
 
 ## Manual Checks
 
-Android device verification was not executed in this environment because `flutter devices` only found macOS desktop and Chrome web targets.
+Android device verification was executed on a physical `Mi 10` running Android 13 (API 33), device id `b1991f76`.
 
-Pending Android device checks:
+Observed on device:
 
-- Today tab loads with warm background and bottom navigation.
-- Medication can be added with two daily times.
-- Today tab displays the medication grouped by time.
-- Calendar tab renders the month grid and stats band without overflow.
-- Confirmation flow requires slide interaction and blocks back navigation until confirmed.
-- App restart keeps medications in SQLite.
-- Notification permission flow and scheduling do not crash startup.
+- `adb install -r -d build/app/outputs/flutter-apk/app-debug.apk` installed successfully.
+- The app launched into `com.yaowan.medication_reminder/.MainActivity`.
+- Today tab loaded with warm background and bottom navigation.
+- Medication could be added with two daily times (`14:30,20:00`).
+- Today tab displayed the medication grouped by time.
+- Calendar tab rendered the month grid and stats band without overflow.
+- App restart kept medications in SQLite.
+- Delete confirmation removed the test medication and returned the medication list to the empty state.
+- App startup and main navigation did not show an app-level fatal exception in logcat.
+
+Known gaps from device smoke testing:
+
+- Confirmation flow was not reachable from the main UI. `ConfirmMedicationPage` exists and has widget coverage, but Today medication cards do not navigate to it and notification click handling is not wired.
+- Notification scheduling did not produce visible package alarm entries during this smoke test. The app initializes notification permissions at startup, but medication creation currently saves data without calling the reminder rescheduler.
 
 ## Notes
 
