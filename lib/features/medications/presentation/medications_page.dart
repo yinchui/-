@@ -101,7 +101,7 @@ class _MedicationListItem extends ConsumerWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    '${medication.dosage} · ${medication.schedule.join(', ')}',
+                    _medicationSubtitle(medication),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -164,6 +164,16 @@ class _MedicationListItem extends ConsumerWidget {
       ).showSnackBar(const SnackBar(content: Text('删除失败，请稍后再试')));
     }
   }
+}
+
+String _medicationSubtitle(Medication medication) {
+  if (medication.dailyPlans.isEmpty) {
+    return '${medication.dosage} · ${medication.schedule.join(', ')}';
+  }
+
+  final duration = medication.durationDays ?? medication.dailyPlans.length;
+  final schedule = medication.dailyPlans.first.schedule.join(', ');
+  return '$duration天疗程 · $schedule';
 }
 
 class _EmptyMedicationsState extends StatelessWidget {

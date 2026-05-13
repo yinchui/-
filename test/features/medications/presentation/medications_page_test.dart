@@ -28,14 +28,23 @@ void main() {
     await tester.tap(find.byIcon(Icons.add));
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.bySemanticsLabel('药名'), '维生素 D');
-    await tester.enterText(find.bySemanticsLabel('剂量'), '1片');
-    await tester.enterText(find.bySemanticsLabel('服用时间'), '08:00,20:00');
+    await _enterTextField(tester, '药名', '维生素 D');
+    await _enterTextField(tester, '服用天数', '7');
+    await _enterTextField(tester, '服用时间', '08:00,20:00');
+    await _enterTextField(tester, '周一剂量', '1片');
+    await _enterTextField(tester, '周二剂量', '1片');
+    await _enterTextField(tester, '周三剂量', '2片');
+    await _enterTextField(tester, '周四剂量', '1片');
+    await _enterTextField(tester, '周五剂量', '1片');
+    await _enterTextField(tester, '周六剂量', '半片');
+    await _enterTextField(tester, '周日剂量', '停服');
+    await _enterTextField(tester, '第3天剂量', '第3天改为半片');
+    await _scrollMedicationFormUntilVisible(tester, find.text('保存'));
     await tester.tap(find.text('保存'));
     await tester.pumpAndSettle();
 
     expect(find.text('维生素 D'), findsOneWidget);
-    expect(find.text('1片 · 08:00, 20:00'), findsOneWidget);
+    expect(find.text('7天疗程 · 08:00, 20:00'), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.delete_outline));
     await tester.pumpAndSettle();
@@ -47,6 +56,43 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('维生素 D'), findsNothing);
-    expect(find.text('1片 · 08:00, 20:00'), findsNothing);
+    expect(find.text('7天疗程 · 08:00, 20:00'), findsNothing);
   });
+}
+
+Future<void> _scrollMedicationFormUntilVisible(
+  WidgetTester tester,
+  Finder finder,
+) async {
+  await tester.scrollUntilVisible(
+    finder,
+    220,
+    scrollable: _medicationFormScrollable(),
+  );
+  await tester.pumpAndSettle();
+}
+
+Future<void> _enterTextField(
+  WidgetTester tester,
+  String label,
+  String value,
+) async {
+  final field = find.byWidgetPredicate(
+    (widget) => widget is TextField && widget.decoration?.labelText == label,
+    description: 'TextField with label "$label"',
+  );
+
+  final firstField = field.at(0);
+
+  await _scrollMedicationFormUntilVisible(tester, firstField);
+  await tester.enterText(firstField, value);
+}
+
+Finder _medicationFormScrollable() {
+  return find
+      .descendant(
+        of: find.byKey(const ValueKey('medication-form-scroll')),
+        matching: find.byType(Scrollable),
+      )
+      .first;
 }
