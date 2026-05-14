@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:medication_reminder/app.dart';
+import 'package:medication_reminder/core/navigation/app_navigator.dart';
 import 'package:medication_reminder/core/notifications/local_notification_scheduler.dart';
+import 'package:medication_reminder/core/notifications/notification_tap_handler.dart';
 import 'package:medication_reminder/core/notifications/rescheduling_medication_repository.dart';
 import 'package:medication_reminder/core/storage/app_database.dart';
 import 'package:medication_reminder/core/sync/cloud_sync_config.dart';
@@ -19,8 +23,22 @@ export 'package:medication_reminder/app.dart' show MedicationReminderApp;
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   tz.initializeTimeZones();
-  final notificationScheduler = LocalNotificationScheduler();
+  final pendingNotificationPayloads = <String>[];
+  NotificationTapHandler? notificationTapHandler;
+  void handleNotificationPayload(String payload) {
+    final handler = notificationTapHandler;
+    if (handler == null) {
+      pendingNotificationPayloads.add(payload);
+      return;
+    }
+    unawaited(handler.handle(payload));
+  }
+
+  final notificationScheduler = LocalNotificationScheduler(
+    onNotificationTap: handleNotificationPayload,
+  );
   await notificationScheduler.initialize();
+  final launchPayload = await notificationScheduler.takeLaunchPayload();
 
   final database = AppDatabase();
   final sqlite = await database.instance;
@@ -34,6 +52,10 @@ Future<void> main() async {
     scheduler: notificationScheduler,
   );
   await reschedulingRepository.rescheduleNotifications();
+  notificationTapHandler = NotificationTapHandler(
+    repository: reschedulingRepository,
+    navigatorKey: appNavigatorKey,
+  );
 
   runApp(
     ProviderScope(
@@ -44,6 +66,16 @@ Future<void> main() async {
       child: const MedicationReminderApp(),
     ),
   );
+
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (launchPayload != null) {
+      handleNotificationPayload(launchPayload);
+    }
+    for (final payload in pendingNotificationPayloads.toList()) {
+      handleNotificationPayload(payload);
+    }
+    pendingNotificationPayloads.clear();
+  });
 }
 
 Future<MedicationRepository> _buildMedicationRepository({

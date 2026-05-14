@@ -4,10 +4,14 @@ import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
 class LocalNotificationScheduler implements NotificationScheduler {
-  LocalNotificationScheduler({FlutterLocalNotificationsPlugin? plugin})
-    : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
+  LocalNotificationScheduler({
+    FlutterLocalNotificationsPlugin? plugin,
+    void Function(String payload)? onNotificationTap,
+  }) : _plugin = plugin ?? FlutterLocalNotificationsPlugin(),
+       _onNotificationTap = onNotificationTap;
 
   final FlutterLocalNotificationsPlugin _plugin;
+  final void Function(String payload)? _onNotificationTap;
 
   @override
   Future<void> initialize() async {
@@ -16,13 +20,36 @@ class LocalNotificationScheduler implements NotificationScheduler {
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
     const settings = InitializationSettings(android: android);
 
-    await _plugin.initialize(settings: settings);
+    await _plugin.initialize(
+      settings: settings,
+      onDidReceiveNotificationResponse: (response) {
+        final payload = response.payload;
+        if (payload == null || payload.isEmpty) {
+          return;
+        }
+        _onNotificationTap?.call(payload);
+      },
+    );
     final androidPlugin = _plugin
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
         >();
     await androidPlugin?.requestNotificationsPermission();
     await androidPlugin?.requestExactAlarmsPermission();
+  }
+
+  Future<String?> takeLaunchPayload() async {
+    final details = await _plugin.getNotificationAppLaunchDetails();
+    if (details?.didNotificationLaunchApp != true) {
+      return null;
+    }
+
+    final payload = details?.notificationResponse?.payload;
+    if (payload == null || payload.isEmpty) {
+      return null;
+    }
+
+    return payload;
   }
 
   @override

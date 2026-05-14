@@ -7,6 +7,8 @@ import 'package:medication_reminder/features/medications/data/in_memory_medicati
 import 'package:medication_reminder/features/medications/domain/medication.dart';
 import 'package:medication_reminder/features/medications/domain/medication_daily_plan.dart';
 import 'package:medication_reminder/features/medications/domain/medication_log.dart';
+import 'package:medication_reminder/features/today/presentation/widgets/medication_card.dart';
+import 'package:medication_reminder/features/confirm/presentation/slide_to_confirm.dart';
 import 'package:medication_reminder/features/today/presentation/today_page.dart';
 
 void main() {
@@ -120,6 +122,40 @@ void main() {
     expect(find.text('09:00'), findsWidgets);
     expect(find.text('第3天半粒'), findsOneWidget);
     expect(find.text('1片'), findsNothing);
+  });
+
+  testWidgets('tapping a pending dose opens confirmation and saves log', (
+    tester,
+  ) async {
+    final repository = InMemoryMedicationRepository();
+    addTearDown(repository.close);
+
+    await repository.saveMedication(_medication(schedule: const ['08:00']));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          medicationRepositoryProvider.overrideWithValue(repository),
+          todayProvider.overrideWithValue(DateTime(2026, 5, 13)),
+          nowProvider.overrideWithValue(DateTime(2026, 5, 13, 8, 5)),
+        ],
+        child: MaterialApp(theme: AppTheme.light(), home: const TodayPage()),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(MedicationCard));
+    await tester.pumpAndSettle();
+
+    expect(find.text('滑动确认已服用'), findsOneWidget);
+
+    await tester.drag(find.byType(SlideToConfirm), const Offset(500, 0));
+    await tester.pumpAndSettle();
+
+    final logs = await repository.getLogsForDate(DateTime(2026, 5, 13));
+    expect(logs.single.status, MedicationLogStatus.confirmed);
+    expect(logs.single.confirmedTime, DateTime(2026, 5, 13, 8, 5).toUtc());
   });
 }
 

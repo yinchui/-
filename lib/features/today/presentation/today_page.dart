@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:medication_reminder/core/theme/app_theme.dart';
+import 'package:medication_reminder/features/confirm/presentation/confirm_medication_page.dart';
 import 'package:medication_reminder/features/medications/application/medication_providers.dart';
 import 'package:medication_reminder/features/medications/domain/medication_dose.dart';
 import 'package:medication_reminder/features/today/presentation/widgets/medication_card.dart';
@@ -41,13 +42,35 @@ class TodayPage extends ConsumerWidget {
                   return const _EmptyState();
                 }
 
-                return _DoseGroups(doses: doses);
+                return _DoseGroups(
+                  doses: doses,
+                  onPendingDoseTap: (dose) {
+                    _openConfirmation(context, ref, [dose]);
+                  },
+                );
               },
               loading: () => const _LoadingState(),
               error: (error, stackTrace) => const _ErrorState(),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _openConfirmation(
+    BuildContext context,
+    WidgetRef ref,
+    List<MedicationDose> doses,
+  ) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) {
+          return ConfirmMedicationPage(
+            doses: doses,
+            onConfirmed: () => ref.invalidate(todayDosesProvider),
+          );
+        },
       ),
     );
   }
@@ -106,9 +129,10 @@ class _TodayHeader extends StatelessWidget {
 }
 
 class _DoseGroups extends StatelessWidget {
-  const _DoseGroups({required this.doses});
+  const _DoseGroups({required this.doses, required this.onPendingDoseTap});
 
   final List<MedicationDose> doses;
+  final ValueChanged<MedicationDose> onPendingDoseTap;
 
   @override
   Widget build(BuildContext context) {
@@ -125,7 +149,12 @@ class _DoseGroups extends StatelessWidget {
           _TimeGroupLabel(time: entry.key),
           const SizedBox(height: 10),
           for (final dose in entry.value) ...[
-            MedicationCard(dose: dose),
+            MedicationCard(
+              dose: dose,
+              onTap: dose.status == DoseStatus.pending
+                  ? () => onPendingDoseTap(dose)
+                  : null,
+            ),
             const SizedBox(height: 12),
           ],
           const SizedBox(height: 2),

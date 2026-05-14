@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:medication_reminder/core/navigation/app_navigator.dart';
 import 'package:medication_reminder/core/theme/app_theme.dart';
 import 'package:medication_reminder/core/widgets/app_shell.dart';
 
@@ -10,6 +11,7 @@ class MedicationReminderApp extends StatelessWidget {
     return MaterialApp(
       title: '药记录',
       debugShowCheckedModeBanner: false,
+      navigatorKey: appNavigatorKey,
       theme: AppTheme.light(),
       home: const AppShell(),
     );
