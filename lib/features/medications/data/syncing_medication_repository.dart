@@ -43,6 +43,12 @@ class SyncingMedicationRepository implements MedicationRepository {
     await _tryPush();
   }
 
+  @override
+  Future<void> deleteLog(String logId) async {
+    await _delegate.deleteLog(logId);
+    await _tryPush();
+  }
+
   Future<void> _tryPush() async {
     try {
       await _syncService.pushPendingChanges();

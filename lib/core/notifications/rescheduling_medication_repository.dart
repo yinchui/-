@@ -45,6 +45,11 @@ class ReschedulingMedicationRepository implements MedicationRepository {
     return _delegate.saveLog(log);
   }
 
+  @override
+  Future<void> deleteLog(String logId) {
+    return _delegate.deleteLog(logId);
+  }
+
   Future<void> rescheduleNotifications() async {
     try {
       final medications = await _delegate.getMedications();

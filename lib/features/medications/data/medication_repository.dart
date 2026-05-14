@@ -13,4 +13,6 @@ abstract class MedicationRepository {
   Future<List<MedicationLog>> getLogsForDate(DateTime date);
 
   Future<void> saveLog(MedicationLog log);
+
+  Future<void> deleteLog(String logId);
 }

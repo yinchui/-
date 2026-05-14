@@ -48,8 +48,9 @@ void main() {
     );
 
     await repository.saveLog(_log());
+    await repository.deleteLog('log-1');
 
-    expect(sync.pushCount, 1);
+    expect(sync.pushCount, 2);
   });
 }
 

@@ -256,6 +256,31 @@ void main() {
     ]);
   });
 
+  test('deleteLog removes log and enqueues delete', () async {
+    final medication = _medication();
+    final log = _log(
+      confirmedTime: DateTime.utc(2026, 5, 13, 8, 5),
+      status: MedicationLogStatus.confirmed,
+    );
+
+    await repository.saveMedication(medication);
+    await repository.saveLog(log);
+
+    await repository.deleteLog(log.id);
+
+    expect(await repository.getLogsForDate(log.date), isEmpty);
+    final logQueueItems = await _syncQueueItems(
+      database,
+      tableName: 'medication_logs',
+    );
+    expect(logQueueItems.map((item) => item.action), [
+      SyncAction.insert,
+      SyncAction.delete,
+    ]);
+    expect(logQueueItems.last.recordId, log.id);
+    expect(logQueueItems.last.payload, {'id': log.id});
+  });
+
   test('deleteMedication cascades to medication logs', () async {
     final medication = _medication();
     final log = _log();

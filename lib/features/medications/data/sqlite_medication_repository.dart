@@ -177,6 +177,28 @@ class SqliteMedicationRepository implements MedicationRepository {
     });
   }
 
+  @override
+  Future<void> deleteLog(String logId) async {
+    await _database.transaction((transaction) async {
+      final deleted = await transaction.delete(
+        'medication_logs',
+        where: 'id = ?',
+        whereArgs: [logId],
+      );
+      if (deleted == 0) {
+        return;
+      }
+
+      await _enqueue(
+        transaction,
+        tableName: 'medication_logs',
+        recordId: logId,
+        action: SyncAction.delete,
+        payload: {'id': logId},
+      );
+    });
+  }
+
   Future<void> close() async {
     await _medicationsController.close();
   }

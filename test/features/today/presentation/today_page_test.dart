@@ -157,6 +157,43 @@ void main() {
     expect(logs.single.status, MedicationLogStatus.confirmed);
     expect(logs.single.confirmedTime, DateTime(2026, 5, 13, 8, 5).toUtc());
   });
+
+  testWidgets('right swipe on confirmed dose reveals cancel action', (
+    tester,
+  ) async {
+    final repository = InMemoryMedicationRepository();
+    addTearDown(repository.close);
+
+    await repository.saveMedication(_medication(schedule: const ['08:00']));
+    await repository.saveLog(_confirmedLog());
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          medicationRepositoryProvider.overrideWithValue(repository),
+          todayProvider.overrideWithValue(DateTime(2026, 5, 13)),
+          nowProvider.overrideWithValue(DateTime(2026, 5, 13, 9, 15)),
+        ],
+        child: MaterialApp(theme: AppTheme.light(), home: const TodayPage()),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('已服用'), findsOneWidget);
+
+    await tester.drag(find.byType(MedicationCard), const Offset(220, 0));
+    await tester.pumpAndSettle();
+
+    expect(find.text('取消'), findsOneWidget);
+
+    await tester.tap(find.text('取消'));
+    await tester.pumpAndSettle();
+
+    expect(await repository.getLogsForDate(DateTime(2026, 5, 13)), isEmpty);
+    expect(find.text('待服用'), findsOneWidget);
+    expect(find.text('已服用'), findsNothing);
+  });
 }
 
 Medication _medication({

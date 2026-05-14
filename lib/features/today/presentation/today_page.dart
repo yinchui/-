@@ -47,6 +47,8 @@ class TodayPage extends ConsumerWidget {
                   onPendingDoseTap: (dose) {
                     _openConfirmation(context, ref, [dose]);
                   },
+                  onConfirmedDoseCancel: (dose) =>
+                      _cancelConfirmation(context, ref, dose),
                 );
               },
               loading: () => const _LoadingState(),
@@ -73,6 +75,29 @@ class TodayPage extends ConsumerWidget {
         },
       ),
     );
+  }
+
+  Future<void> _cancelConfirmation(
+    BuildContext context,
+    WidgetRef ref,
+    MedicationDose dose,
+  ) async {
+    final log = dose.log;
+    if (log == null) {
+      return;
+    }
+
+    try {
+      await ref.read(medicationRepositoryProvider).deleteLog(log.id);
+      ref.invalidate(todayDosesProvider);
+    } catch (_) {
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('取消失败，请稍后再试')));
+    }
   }
 }
 
@@ -129,10 +154,15 @@ class _TodayHeader extends StatelessWidget {
 }
 
 class _DoseGroups extends StatelessWidget {
-  const _DoseGroups({required this.doses, required this.onPendingDoseTap});
+  const _DoseGroups({
+    required this.doses,
+    required this.onPendingDoseTap,
+    required this.onConfirmedDoseCancel,
+  });
 
   final List<MedicationDose> doses;
   final ValueChanged<MedicationDose> onPendingDoseTap;
+  final Future<void> Function(MedicationDose dose) onConfirmedDoseCancel;
 
   @override
   Widget build(BuildContext context) {
@@ -149,11 +179,10 @@ class _DoseGroups extends StatelessWidget {
           _TimeGroupLabel(time: entry.key),
           const SizedBox(height: 10),
           for (final dose in entry.value) ...[
-            MedicationCard(
+            _DoseCardActionWrapper(
               dose: dose,
-              onTap: dose.status == DoseStatus.pending
-                  ? () => onPendingDoseTap(dose)
-                  : null,
+              onPendingDoseTap: onPendingDoseTap,
+              onConfirmedDoseCancel: onConfirmedDoseCancel,
             ),
             const SizedBox(height: 12),
           ],
@@ -161,6 +190,136 @@ class _DoseGroups extends StatelessWidget {
         ],
       ],
     );
+  }
+}
+
+class _DoseCardActionWrapper extends StatelessWidget {
+  const _DoseCardActionWrapper({
+    required this.dose,
+    required this.onPendingDoseTap,
+    required this.onConfirmedDoseCancel,
+  });
+
+  final MedicationDose dose;
+  final ValueChanged<MedicationDose> onPendingDoseTap;
+  final Future<void> Function(MedicationDose dose) onConfirmedDoseCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    final card = MedicationCard(
+      dose: dose,
+      onTap: dose.status == DoseStatus.pending
+          ? () => onPendingDoseTap(dose)
+          : null,
+    );
+
+    if (dose.status != DoseStatus.confirmed || dose.log == null) {
+      return card;
+    }
+
+    return _SwipeCancelAction(
+      onCancel: () => onConfirmedDoseCancel(dose),
+      child: card,
+    );
+  }
+}
+
+class _SwipeCancelAction extends StatefulWidget {
+  const _SwipeCancelAction({required this.child, required this.onCancel});
+
+  final Widget child;
+  final Future<void> Function() onCancel;
+
+  @override
+  State<_SwipeCancelAction> createState() => _SwipeCancelActionState();
+}
+
+class _SwipeCancelActionState extends State<_SwipeCancelAction> {
+  static const _actionWidth = 92.0;
+  var _offset = 0.0;
+  var _isCancelling = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onHorizontalDragUpdate: _isCancelling
+            ? null
+            : (details) {
+                setState(() {
+                  _offset = (_offset + details.delta.dx).clamp(
+                    0.0,
+                    _actionWidth,
+                  );
+                });
+              },
+        onHorizontalDragEnd: _isCancelling
+            ? null
+            : (_) {
+                setState(() {
+                  _offset = _offset >= _actionWidth * 0.45 ? _actionWidth : 0;
+                });
+              },
+        child: Stack(
+          children: [
+            if (_offset > 0)
+              Positioned.fill(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: SizedBox(
+                    width: _actionWidth,
+                    child: Material(
+                      color: AppColors.red,
+                      child: InkWell(
+                        onTap: _isCancelling ? null : _cancel,
+                        child: Center(
+                          child: _isCancelling
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text(
+                                  '取消',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            Transform.translate(
+              offset: Offset(_offset, 0),
+              child: widget.child,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _cancel() async {
+    setState(() => _isCancelling = true);
+    try {
+      await widget.onCancel();
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isCancelling = false;
+          _offset = 0;
+        });
+      }
+    }
   }
 }
 

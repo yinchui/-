@@ -105,6 +105,11 @@ class InMemoryMedicationRepository implements MedicationRepository {
     _logsById[log.id] = log;
   }
 
+  @override
+  Future<void> deleteLog(String logId) async {
+    _logsById.remove(logId);
+  }
+
   Future<void> close() async {
     if (_medicationsController.isClosed) {
       return;
