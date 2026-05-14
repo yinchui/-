@@ -3,6 +3,7 @@ import 'package:medication_reminder/core/notifications/alarm_rescheduler.dart';
 import 'package:medication_reminder/core/notifications/notification_scheduler.dart';
 import 'package:medication_reminder/core/notifications/reminder_retry_service.dart';
 import 'package:medication_reminder/features/medications/domain/medication.dart';
+import 'package:medication_reminder/features/medications/domain/medication_daily_plan.dart';
 import 'package:medication_reminder/features/medications/domain/medication_dose.dart';
 
 class FakeNotificationScheduler implements NotificationScheduler {
@@ -69,6 +70,55 @@ void main() {
     );
 
     expect(scheduler.scheduled.single.scheduledAt, DateTime(2026, 5, 13, 8));
+  });
+
+  test('rescheduler schedules course reminders with daily dosage', () async {
+    final scheduler = FakeNotificationScheduler();
+
+    await AlarmRescheduler(scheduler).rescheduleAll(
+      medications: [
+        Medication(
+          id: 'm1',
+          userId: 'user-1',
+          name: '泼尼松',
+          dosage: '按疗程',
+          schedule: const ['08:00'],
+          startDate: DateTime(2026, 5, 12),
+          durationDays: 2,
+          dailyPlans: [
+            MedicationDailyPlan(
+              date: DateTime(2026, 5, 12),
+              dayIndex: 1,
+              dosage: '2片',
+              schedule: const ['08:00'],
+            ),
+            MedicationDailyPlan(
+              date: DateTime(2026, 5, 13),
+              dayIndex: 2,
+              dosage: '1片',
+              schedule: const ['08:00'],
+            ),
+          ],
+          createdAt: DateTime(2026, 5, 12),
+          updatedAt: DateTime(2026, 5, 12),
+        ),
+      ],
+      from: DateTime(2026, 5, 12, 7),
+    );
+
+    expect(scheduler.cancelAllCount, 1);
+    expect(scheduler.scheduled.map((request) => request.scheduledAt), [
+      DateTime(2026, 5, 12, 8),
+      DateTime(2026, 5, 13, 8),
+    ]);
+    expect(scheduler.scheduled.map((request) => request.body), [
+      '泼尼松 · 2片',
+      '泼尼松 · 1片',
+    ]);
+    expect(
+      scheduler.scheduled.map((request) => request.payload),
+      contains('medication:m1:2026-05-13:08:00'),
+    );
   });
 
   test(
