@@ -25,19 +25,20 @@ class _ConfirmMedicationPageState extends ConsumerState<ConfirmMedicationPage> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: _confirmed,
-      child: Scaffold(
-        backgroundColor: AppColors.warmBackground,
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 220),
-              child: _confirmed
-                  ? const _SuccessContent()
-                  : _ConfirmContent(doses: widget.doses, onConfirmed: _confirm),
-            ),
+    return Scaffold(
+      backgroundColor: AppColors.warmBackground,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 28),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 220),
+            child: _confirmed
+                ? const _SuccessContent()
+                : _ConfirmContent(
+                    doses: widget.doses,
+                    onConfirmed: _confirm,
+                    onDismiss: () => Navigator.of(context).maybePop(),
+                  ),
           ),
         ),
       ),
@@ -67,17 +68,32 @@ class _ConfirmMedicationPageState extends ConsumerState<ConfirmMedicationPage> {
 }
 
 class _ConfirmContent extends StatelessWidget {
-  const _ConfirmContent({required this.doses, required this.onConfirmed});
+  const _ConfirmContent({
+    required this.doses,
+    required this.onConfirmed,
+    required this.onDismiss,
+  });
 
   final List<MedicationDose> doses;
   final Future<void> Function() onConfirmed;
+  final VoidCallback onDismiss;
 
   @override
   Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const _ReminderBadge(),
-        const SizedBox(height: 24),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: IconButton(
+            tooltip: '关闭',
+            onPressed: onDismiss,
+            icon: const Icon(Icons.close, color: AppColors.textSecondary),
+          ),
+        ),
+        const SizedBox(height: 10),
+        const Center(child: _ReminderBadge()),
+        const SizedBox(height: 22),
         Expanded(
           child: ListView.separated(
             itemCount: doses.length,

@@ -16,8 +16,8 @@ class SlideToConfirm extends StatefulWidget {
 }
 
 class _SlideToConfirmState extends State<SlideToConfirm> {
-  static const _thumbSize = 56.0;
-  static const _confirmThreshold = 0.7;
+  static const _thumbSize = 60.0;
+  static const _confirmThreshold = 0.58;
 
   var _drag = 0.0;
   var _isConfirming = false;
@@ -31,57 +31,60 @@ class _SlideToConfirmState extends State<SlideToConfirm> {
           double.infinity,
         );
 
-        return GestureDetector(
-          onHorizontalDragUpdate: widget.enabled && !_isConfirming
-              ? (details) {
-                  setState(() {
-                    _drag = (_drag + details.delta.dx).clamp(0.0, maxDrag);
-                  });
-                }
-              : null,
-          onHorizontalDragEnd: widget.enabled && !_isConfirming
-              ? (_) => _finishDrag(maxDrag)
-              : null,
-          child: Container(
-            height: 64,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppColors.orange, Color(0xFFEB7B30)],
+        return SizedBox(
+          width: double.infinity,
+          child: GestureDetector(
+            onHorizontalDragUpdate: widget.enabled && !_isConfirming
+                ? (details) {
+                    setState(() {
+                      _drag = (_drag + details.delta.dx).clamp(0.0, maxDrag);
+                    });
+                  }
+                : null,
+            onHorizontalDragEnd: widget.enabled && !_isConfirming
+                ? (_) => _finishDrag(maxDrag)
+                : null,
+            child: Container(
+              height: 72,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [AppColors.orange, Color(0xFFEB7B30)],
+                ),
+                borderRadius: BorderRadius.circular(8),
               ),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Text(
-                  _isConfirming ? '正在确认' : '滑动确认已服用',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                Positioned(
-                  left: 4 + _drag,
-                  child: Container(
-                    width: _thumbSize,
-                    height: _thumbSize,
-                    decoration: const BoxDecoration(
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Text(
+                    _isConfirming ? '正在确认' : '滑动确认已服用',
+                    style: const TextStyle(
                       color: Colors.white,
-                      shape: BoxShape.circle,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
                     ),
-                    child: _isConfirming
-                        ? const Padding(
-                            padding: EdgeInsets.all(16),
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(
-                            Icons.arrow_forward,
-                            color: AppColors.orange,
-                          ),
                   ),
-                ),
-              ],
+                  Positioned(
+                    left: 4 + _drag,
+                    child: Container(
+                      width: _thumbSize,
+                      height: _thumbSize,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: _isConfirming
+                          ? const Padding(
+                              padding: EdgeInsets.all(17),
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(
+                              Icons.arrow_forward,
+                              color: AppColors.orange,
+                            ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
