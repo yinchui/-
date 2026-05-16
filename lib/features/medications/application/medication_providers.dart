@@ -29,8 +29,21 @@ final scheduleServiceProvider = Provider<ScheduleService>((ref) {
   return ScheduleService();
 });
 
+final systemClockProvider = Provider<DateTime Function()>((ref) {
+  return DateTime.now;
+});
+
+final clockTickProvider = StreamProvider<DateTime>((ref) {
+  final clock = ref.watch(systemClockProvider);
+  return Stream<DateTime>.periodic(const Duration(minutes: 1), (_) => clock());
+});
+
 final nowProvider = Provider<DateTime>((ref) {
-  return DateTime.now();
+  final tick = ref.watch(clockTickProvider);
+  return switch (tick) {
+    AsyncData(:final value) => value,
+    _ => ref.watch(systemClockProvider)(),
+  };
 });
 
 const localUserId = '00000000-0000-4000-8000-000000000000';

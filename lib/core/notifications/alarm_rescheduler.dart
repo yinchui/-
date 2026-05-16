@@ -27,6 +27,7 @@ class AlarmRescheduler {
             body: '${medication.name} · ${medication.dosage}',
             scheduledAt: scheduledAt,
             payload: 'medication:${medication.id}:$time',
+            repeat: NotificationRepeat.daily,
           ),
         );
       }

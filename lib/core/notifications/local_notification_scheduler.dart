@@ -72,6 +72,10 @@ class LocalNotificationScheduler implements NotificationScheduler {
       notificationDetails: const NotificationDetails(android: androidDetails),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       payload: request.payload,
+      matchDateTimeComponents: switch (request.repeat) {
+        NotificationRepeat.daily => DateTimeComponents.time,
+        NotificationRepeat.none => null,
+      },
     );
   }
 

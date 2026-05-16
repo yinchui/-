@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -194,16 +196,65 @@ void main() {
     expect(find.text('待服用'), findsOneWidget);
     expect(find.text('已服用'), findsNothing);
   });
+
+  testWidgets('refreshes today doses when the clock crosses midnight', (
+    tester,
+  ) async {
+    final repository = InMemoryMedicationRepository();
+    final clockTicks = StreamController<DateTime>();
+    addTearDown(clockTicks.close);
+    addTearDown(repository.close);
+
+    await repository.saveMedication(
+      _medication(
+        name: '第二天药品',
+        schedule: const ['08:00'],
+        dailyPlans: [
+          MedicationDailyPlan(
+            date: DateTime(2026, 5, 14),
+            dayIndex: 1,
+            dosage: '1片',
+            schedule: const ['08:00'],
+          ),
+        ],
+      ),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          medicationRepositoryProvider.overrideWithValue(repository),
+          clockTickProvider.overrideWith((ref) => clockTicks.stream),
+        ],
+        child: MaterialApp(theme: AppTheme.light(), home: const TodayPage()),
+      ),
+    );
+
+    clockTicks.add(DateTime(2026, 5, 13, 23, 59));
+    await tester.pumpAndSettle();
+
+    expect(find.text('5月13日 周三 · 按时照顾自己'), findsOneWidget);
+    expect(find.text('今天还没有添加药品'), findsOneWidget);
+    expect(find.text('第二天药品'), findsNothing);
+
+    clockTicks.add(DateTime(2026, 5, 14));
+    await tester.pumpAndSettle();
+
+    expect(find.text('5月14日 周四 · 按时照顾自己'), findsOneWidget);
+    expect(find.text('第二天药品'), findsOneWidget);
+    expect(find.text('今天还没有添加药品'), findsNothing);
+  });
 }
 
 Medication _medication({
+  String name = '维生素D',
   List<String> schedule = const ['08:00', '20:00'],
   List<MedicationDailyPlan> dailyPlans = const [],
 }) {
   return Medication(
     id: 'medication-1',
     userId: 'user-1',
-    name: '维生素D',
+    name: name,
     dosage: '1片',
     schedule: schedule,
     dailyPlans: dailyPlans,

@@ -51,6 +51,30 @@ void main() {
     expect(scheduler.scheduled.last.scheduledAt, DateTime(2026, 5, 12, 20));
   });
 
+  test(
+    'rescheduler marks regular medication reminders as daily repeating',
+    () async {
+      final scheduler = FakeNotificationScheduler();
+
+      await AlarmRescheduler(scheduler).rescheduleAll(
+        medications: [
+          Medication(
+            id: 'm1',
+            userId: 'user-1',
+            name: '阿莫西林',
+            dosage: '2粒',
+            schedule: const ['08:00'],
+            createdAt: DateTime(2026, 5, 12),
+            updatedAt: DateTime(2026, 5, 12),
+          ),
+        ],
+        from: DateTime(2026, 5, 12, 7),
+      );
+
+      expect(scheduler.scheduled.single.repeat, NotificationRepeat.daily);
+    },
+  );
+
   test('rescheduler moves elapsed reminders to the next day', () async {
     final scheduler = FakeNotificationScheduler();
 
@@ -115,6 +139,10 @@ void main() {
       '泼尼松 · 2片',
       '泼尼松 · 1片',
     ]);
+    expect(
+      scheduler.scheduled.map((request) => request.repeat),
+      everyElement(NotificationRepeat.none),
+    );
     expect(
       scheduler.scheduled.map((request) => request.payload),
       contains('medication:m1:2026-05-13:08:00'),
