@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:medication_reminder/core/theme/app_theme.dart';
+import 'package:medication_reminder/features/confirm/presentation/slide_to_confirm.dart';
 import 'package:medication_reminder/features/calendar/presentation/calendar_page.dart';
 import 'package:medication_reminder/features/medications/application/medication_providers.dart';
 import 'package:medication_reminder/features/medications/data/in_memory_medication_repository.dart';
@@ -111,6 +112,51 @@ void main() {
     expect(find.text('头孢'), findsOneWidget);
     expect(find.text('第3天半片'), findsOneWidget);
     expect(find.text('09:00 · 计划中'), findsOneWidget);
+  });
+
+  testWidgets('calendar page confirms a previous planned dose', (tester) async {
+    final repository = InMemoryMedicationRepository();
+    addTearDown(repository.close);
+
+    await repository.saveMedication(
+      _medication(id: 'm1', name: '维生素 D', schedule: const ['08:00']),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          medicationRepositoryProvider.overrideWithValue(repository),
+          todayProvider.overrideWithValue(DateTime(2026, 5, 13)),
+          nowProvider.overrideWithValue(DateTime(2026, 5, 13, 12)),
+        ],
+        child: MaterialApp(theme: AppTheme.light(), home: const CalendarPage()),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('12'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('08:00 · 计划中'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(TextButton, '确认'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('滑动确认已服用'), findsOneWidget);
+
+    await tester.drag(find.byType(SlideToConfirm), const Offset(500, 0));
+    await tester.pumpAndSettle();
+
+    final logs = await repository.getLogsForDate(DateTime(2026, 5, 12));
+    expect(logs, hasLength(1));
+    expect(logs.single.status, MedicationLogStatus.confirmed);
+    expect(logs.single.scheduledTime, DateTime(2026, 5, 12, 8).toUtc());
+    expect(logs.single.confirmedTime, DateTime(2026, 5, 13, 12).toUtc());
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(find.text('08:00 · 已服用'), findsOneWidget);
   });
 }
 

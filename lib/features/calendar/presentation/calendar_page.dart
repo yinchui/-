@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:medication_reminder/core/theme/app_theme.dart';
 import 'package:medication_reminder/features/calendar/application/calendar_service.dart';
+import 'package:medication_reminder/features/confirm/presentation/confirm_medication_page.dart';
 import 'package:medication_reminder/features/medications/application/medication_providers.dart';
 import 'package:medication_reminder/features/medications/application/schedule_service.dart';
 import 'package:medication_reminder/features/medications/domain/medication.dart';
@@ -143,6 +144,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
                     _DayDetails(
                       selectedDate: _selectedDate,
                       doses: selectedDoses,
+                      onDoseConfirm: (dose) => _openConfirmation(dose),
                     ),
                   ],
                 );
@@ -164,6 +166,19 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
       );
       _selectedDate = DateTime(_visibleMonth.year, _visibleMonth.month);
     });
+  }
+
+  void _openConfirmation(MedicationDose dose) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ConfirmMedicationPage(
+          doses: [dose],
+          onConfirmed: () {
+            ref.invalidate(_calendarMonthDataProvider(_visibleMonth));
+          },
+        ),
+      ),
+    );
   }
 }
 
@@ -420,10 +435,15 @@ class _DayCell extends StatelessWidget {
 }
 
 class _DayDetails extends StatelessWidget {
-  const _DayDetails({required this.selectedDate, required this.doses});
+  const _DayDetails({
+    required this.selectedDate,
+    required this.doses,
+    required this.onDoseConfirm,
+  });
 
   final DateTime selectedDate;
   final List<MedicationDose> doses;
+  final ValueChanged<MedicationDose> onDoseConfirm;
 
   @override
   Widget build(BuildContext context) {
@@ -458,7 +478,12 @@ class _DayDetails extends StatelessWidget {
               )
             else
               for (final dose in doses) ...[
-                _DoseRow(dose: dose),
+                _DoseRow(
+                  dose: dose,
+                  onConfirm: dose.status == DoseStatus.confirmed
+                      ? null
+                      : () => onDoseConfirm(dose),
+                ),
                 if (dose != doses.last) const Divider(height: 18),
               ],
           ],
@@ -469,9 +494,10 @@ class _DayDetails extends StatelessWidget {
 }
 
 class _DoseRow extends StatelessWidget {
-  const _DoseRow({required this.dose});
+  const _DoseRow({required this.dose, required this.onConfirm});
 
   final MedicationDose dose;
+  final VoidCallback? onConfirm;
 
   @override
   Widget build(BuildContext context) {
@@ -540,23 +566,37 @@ class _DoseRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        DecoratedBox(
-          decoration: BoxDecoration(
-            color: statusBackground,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            child: Text(
-              statusText,
-              style: TextStyle(
-                color: statusColor,
-                fontSize: 12,
-                fontWeight: FontWeight.w900,
+        if (onConfirm == null)
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: statusBackground,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              child: Text(
+                statusText,
+                style: TextStyle(
+                  color: statusColor,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ),
+          )
+        else
+          TextButton(
+            onPressed: onConfirm,
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.orange,
+              minimumSize: const Size(52, 36),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: const Text(
+              '确认',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900),
+            ),
           ),
-        ),
       ],
     );
   }
